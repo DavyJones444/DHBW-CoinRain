@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Coin Rain</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Coin Rain</h1>
+    <div id="coin-display">
+        <i class="fa-solid fa-coins"></i>
+        <span id="coin-count">0</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="game-area">
+        <div id="sky">
+            <img id="cloud" src="cloud-white.png" alt="Wolke" />
+            <!-- Münzen-Container für animierte Münzen -->
+            <div id="coin-container"></div>
+        </div>
+
+        <aside id="shop">
+            <h2>Shop</h2>
+            <ul>
+                <li>Mehr Münzen pro Klick</li>
+                <li>Automatisches Regnen</li>
+                <!-- Hier später Shop Items -->
+            </ul>
+        </aside>
+    </section>
+    <button id="rain-button">Münze regnen lassen</button>
+  </main>
+
+  <footer>
+    <p>© 2025 Coin Rain | Impressum | Datenschutz</p>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>
