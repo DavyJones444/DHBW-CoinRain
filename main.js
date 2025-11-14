@@ -304,6 +304,13 @@ function updateShopUI() {
 
 // Event: Klick auf Button "Münze regnen lassen"
 cloud.addEventListener('click', () => {
+  // Füge Klasse zur Animation hinzu
+  cloud.classList.add("click-animation");
+
+  // Entferne Klasse nach Animation, damit man wieder klicken kann
+  cloud.addEventListener('animationend', () => {
+    cloud.classList.remove("click-animation");
+  }, { once: true });
   addCoinsWithTiers(coinsPerClick);
 });
 
