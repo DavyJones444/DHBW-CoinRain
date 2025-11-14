@@ -128,12 +128,10 @@ function addCoinsWithTiers(amount = 1) {
   // Weitere Münztier basierend auf unlocked und Chance
   const unlocked = getUnlockedTiers();
   unlocked.slice(1).forEach(tier => {
-    for (let i = 0; i < amount; i++) {
       if (chanceCheck(getTierChance(tier))) {
         coinsThisClick += getTierValue(tier);
         animations.push({color: tier.color, count: 1});
       }
-    }
   });
 
   totalCoins += coinsThisClick;
@@ -229,15 +227,28 @@ function updateShopUI() {
   getUnlockedTiers().slice(1).forEach((tier, i) => {
     const chanceCost = calculateUpgradeCost(baseChanceUpgradeCost, upgradeTierCostFactor, tier.chanceLevel);
     const valueCost = calculateUpgradeCost(baseValueUpgradeCost, upgradeTierCostFactor, tier.valueLevel);
-    html += `
+
+    if ((getTierChance(tier)*100).toFixed(1) < 100) {
+      html += `
       <li>
-        <strong>${tier.name} Münze</strong> (ab ${tier.unlockAt} Münzen)
+        <strong>${tier.name} Münze</strong>
         <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
         <button data-index="${i+1}" class="buy-chance-btn">+5% (${chanceCost} Münzen)</button><br>
         Wert: x${getTierValue(tier).toFixed(2)}
         <button data-index="${i+1}" class="buy-value-btn">+20% (${valueCost} Münzen)</button>
       </li>
     `;
+    } else {
+      html += `
+      <li>
+        <strong>${tier.name} Münze</strong>
+        <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
+        <br>
+        Wert: x${getTierValue(tier).toFixed(2)}
+        <button data-index="${i+1}" class="buy-value-btn">+20% (${valueCost} Münzen)</button>
+      </li>
+    `;
+    }
   });
 
   shopList.innerHTML = html;
