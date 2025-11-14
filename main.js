@@ -1,15 +1,62 @@
+import { saveGame, loadGame } from './savestate.js';
+
 // Münz Tiers mit Daten und persistentem Freischaltstatus
-const coinTiers = [
-  {name: 'Bronze', color: 'bronze', baseValue: 1, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
-  {name: 'Silber', color: 'silver', baseValue: 5, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Gold', color: 'gold', baseValue: 20, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Diamant', color: 'cyan', baseValue: 100, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-];
+let coinTiers = [];
+async function loadCoinTiers() {
+  const res = await fetch('coinTiers.json');
+  coinTiers = await res.json();
+  coinsPerClick = coinTiers[0].baseValue;
+  // Optional: Nach Laden UI oder Logik initialisieren
+}
+
+async function initGame() {
+  // 1. coinTiers laden
+  await loadCoinTiers();
+
+  // 2. Münzen pro Klick auf Basis von Bronze initialisieren
+  coinsPerClick = coinTiers[0].baseValue;
+
+  // 3. Spielstand laden
+  const saveData = loadGame();
+  if (saveData) {
+    totalCoins = saveData.totalCoins ?? totalCoins;
+    upgradeLevel = saveData.upgradeLevel ?? upgradeLevel;
+    autoRainLevel = saveData.autoRainLevel ?? autoRainLevel;
+    autoRainInterval = saveData.autoRainInterval ?? autoRainInterval;
+    coinsPerClick = saveData.coinsPerClick ?? coinsPerClick;
+    if (saveData.coinTiers) {
+      saveData.coinTiers.forEach((t, i) => {
+        if (coinTiers[i]) {
+          coinTiers[i].unlocked    = t.unlocked    ?? coinTiers[i].unlocked;
+          coinTiers[i].chanceLevel = t.chanceLevel ?? coinTiers[i].chanceLevel;
+          coinTiers[i].valueLevel  = t.valueLevel  ?? coinTiers[i].valueLevel;
+        }
+      });
+    }
+  }
+
+  // 4. Shop-Aufbau und Münzfreischaltungen
+  updateUnlockedTiers();
+  updateShopUI();
+
+  // 5. Eventlistener setzen
+  rainButton.addEventListener('click', () => {
+    addCoinsWithTiers(coinsPerClick);
+  });
+
+  // 6. Automatischer Münzregen, falls aktiv
+  if (autoRainLevel > 0 && !autoRainTimer) {
+    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
+  }
+}
+
+// Ganz am Ende deiner main.js:
+initGame();
+
 
 // Globale Variablen
 let totalCoins = 0;
-let coinsPerClick = coinTiers[0].baseValue;
+let coinsPerClick = 0;
 
 // Upgrade "Mehr Münzen pro Klick"
 let upgradeLevel = 0;
@@ -39,52 +86,12 @@ const coinContainer = document.getElementById('coin-container');
 const cloud = document.getElementById('cloud');
 const shopList = document.querySelector('#shop ul');
 
-// Speichern des Spielstands in localStorage
-function saveGame() {
-  const saveData = {
-    totalCoins,
-    upgradeLevel,
-    autoRainLevel,
-    autoRainInterval,
-    coinsPerClick,
-    coinTiers: coinTiers.map(t => ({
-      unlocked: t.unlocked,
-      chanceLevel: t.chanceLevel,
-      valueLevel: t.valueLevel,
-    })),
-  };
-  localStorage.setItem('coinRainSave', JSON.stringify(saveData));
-}
-
-// Laden des Spielstands aus localStorage
-function loadGame() {
-  const saved = localStorage.getItem('coinRainSave');
-  if (!saved) return;
-  const saveData = JSON.parse(saved);
-
-  totalCoins = saveData.totalCoins ?? totalCoins;
-  upgradeLevel = saveData.upgradeLevel ?? upgradeLevel;
-  autoRainLevel = saveData.autoRainLevel ?? autoRainLevel;
-  autoRainInterval = saveData.autoRainInterval ?? autoRainInterval;
-  coinsPerClick = saveData.coinsPerClick ?? coinsPerClick;
-
-  if (saveData.coinTiers) {
-    saveData.coinTiers.forEach((t, i) => {
-      if (coinTiers[i]) {
-        coinTiers[i].unlocked = t.unlocked ?? coinTiers[i].unlocked;
-        coinTiers[i].chanceLevel = t.chanceLevel ?? coinTiers[i].chanceLevel;
-        coinTiers[i].valueLevel = t.valueLevel ?? coinTiers[i].valueLevel;
-      }
-    });
-  }
-
-  upgradeCost = calculateUpgradeCost(baseUpgradeCost, upgradeCostFactor, upgradeLevel);
-  autoRainCost = calculateUpgradeCost(baseAutoRainCost, autoRainCostFactor, autoRainLevel);
-}
-
 // Berechnung Upgradekosten
-function calculateUpgradeCost(base, factor, level) {
-  return Math.floor(base * Math.pow(factor, level));
+function calculateUpgradeCost(tier, factor, level) {
+  return Math.floor(tier.startCost * Math.pow(factor, level));
+}
+function calculateRainUpgradeCost(value, factor, level) {
+  return Math.floor(value * Math.pow(factor, level));
 }
 
 // Freigeschaltete Münztier basieren auf unlocked Property
@@ -154,7 +161,7 @@ function buyUpgrade() {
     totalCoins -= upgradeCost;
     upgradeLevel++;
     coinsPerClick = (upgradeLevel + 1) * coinTiers[0].baseValue;
-    upgradeCost = calculateUpgradeCost(baseUpgradeCost, upgradeCostFactor, upgradeLevel);
+    upgradeCost = calculateUpgradeCost(coinTiers[0], upgradeCostFactor, upgradeLevel);
     coinCountEl.textContent = totalCoins;
     updateShopUI();
     saveGame();
@@ -168,7 +175,7 @@ function buyAutoRain() {
   if (totalCoins >= autoRainCost) {
     totalCoins -= autoRainCost;
     autoRainLevel++;
-    autoRainCost = calculateUpgradeCost(baseAutoRainCost, autoRainCostFactor, autoRainLevel);
+    autoRainCost = calculateRainUpgradeCost(baseAutoRainCost, autoRainCostFactor, autoRainLevel);
     autoRainInterval = Math.max(autoRainInterval * autoRainIntervalFactor, autoRainMinInterval);
     if (autoRainTimer) clearInterval(autoRainTimer);
     autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
@@ -183,7 +190,7 @@ function buyAutoRain() {
 // Upgrade kaufen: Chance Upgrade für Münztier
 function buyChanceUpgrade(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(baseChanceUpgradeCost, upgradeTierCostFactor, tier.chanceLevel);
+  const cost = calculateUpgradeCost(coinTiers[tierIndex], upgradeTierCostFactor, tier.chanceLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
     tier.chanceLevel++;
@@ -198,7 +205,7 @@ function buyChanceUpgrade(tierIndex) {
 // Upgrade kaufen: Wert Upgrade für Münztier
 function buyValueUpgrade(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(baseValueUpgradeCost, upgradeTierCostFactor, tier.valueLevel);
+  const cost = calculateUpgradeCost(coinTiers[tierIndex], upgradeTierCostFactor, tier.valueLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
     tier.valueLevel++;
@@ -225,8 +232,8 @@ function updateShopUI() {
 
   // Anzeigen für freigeschaltete Münzen (außer Bronze)
   getUnlockedTiers().slice(1).forEach((tier, i) => {
-    const chanceCost = calculateUpgradeCost(baseChanceUpgradeCost, upgradeTierCostFactor, tier.chanceLevel);
-    const valueCost = calculateUpgradeCost(baseValueUpgradeCost, upgradeTierCostFactor, tier.valueLevel);
+    const chanceCost = calculateUpgradeCost(tier, upgradeTierCostFactor, tier.chanceLevel);
+    const valueCost = calculateUpgradeCost(tier, upgradeTierCostFactor, tier.valueLevel);
 
     if ((getTierChance(tier)*100).toFixed(1) < 100) {
       html += `
@@ -277,7 +284,24 @@ if (autoRainLevel > 0 && !autoRainTimer) {
 }
 
 // Beim Laden Spielstand laden, UI und Timer setzen
-loadGame();
+const saveData = loadGame();
+if (saveData) {
+  totalCoins = saveData.totalCoins ?? totalCoins;
+  upgradeLevel = saveData.upgradeLevel ?? upgradeLevel;
+  autoRainLevel = saveData.autoRainLevel ?? autoRainLevel;
+  autoRainInterval = saveData.autoRainInterval ?? autoRainInterval;
+  coinsPerClick = saveData.coinsPerClick ?? coinsPerClick;
+  if (saveData.coinTiers) {
+    saveData.coinTiers.forEach((t, i) => {
+      if (coinTiers[i]) {
+        coinTiers[i].unlocked = t.unlocked ?? coinTiers[i].unlocked;
+        coinTiers[i].chanceLevel = t.chanceLevel ?? coinTiers[i].chanceLevel;
+        coinTiers[i].valueLevel = t.valueLevel ?? coinTiers[i].valueLevel;
+      }
+    });
+  }
+}
+
 updateUnlockedTiers();
 updateShopUI();
 
@@ -310,3 +334,5 @@ function dropCoinAnimation(color = 'bronze') {
 
   coin.addEventListener('animationend', () => coin.remove());
 }
+
+initGame();

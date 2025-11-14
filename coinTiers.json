@@ -1,0 +1,62 @@
+[
+    {
+        "name": "Bronze", 
+        "color": "bronze", 
+        "baseValue": 1, 
+        "chanceBase": 0, 
+        "valueMultiplier": 1, 
+        "unlockAt": 0, 
+        "unlocked": true, 
+        "chanceLevel": 0, 
+        "valueLevel": 0,
+        "startCost": 25
+    },
+    {
+        "name": "Silber", 
+        "color": "silver", 
+        "baseValue": 5, 
+        "chanceBase": 0.05, 
+        "valueMultiplier": 1, 
+        "unlockAt": 1000, 
+        "unlocked": false, 
+        "chanceLevel": 0, 
+        "valueLevel": 0,
+        "startCost": 200
+    },
+    {
+        "name": "Gold", 
+        "color": "gold", 
+        "baseValue": 20, 
+        "chanceBase": 0.05, 
+        "valueMultiplier": 1, 
+        "unlockAt": 10000, 
+        "unlocked": false, 
+        "chanceLevel": 0, 
+        "valueLevel": 0,
+        "startCost": 2500
+    },
+    {
+        "name": "Diamant", 
+        "color": "cyan", 
+        "baseValue": 100, 
+        "chanceBase": 0.05, 
+        "valueMultiplier": 1, 
+        "unlockAt": 100000, 
+        "unlocked": false, 
+        "chanceLevel": 0, 
+        "valueLevel": 0,
+        "startCost": 30000
+    },
+    {
+        "name": "Obsidian", 
+        "color": "darkviolet", 
+        "baseValue": 500, 
+        "chanceBase": 0.05, 
+        "valueMultiplier": 1, 
+        "unlockAt": 1000000, 
+        "unlocked": false, 
+        "chanceLevel": 0, 
+        "valueLevel": 0,
+        "startCost": 350000
+    }
+]
