@@ -1,0 +1,16 @@
+<div id="payment-modal" class="mtx-modal">
+    <div class="mtx-content payment-form">
+      <span id="payment-close-btn" class="mtx-close-btn">&times;</span>
+      <h2 id="payment-title">Zahlungsinformation</h2>
+      <p id="payment-summary"></p>
+      <form id="giropay-form">
+        <label for="iban">IBAN (GiroPay):</label>
+        <input type="text" id="iban" placeholder="DE00 1234 5678 9..." required>
+        <div class="checkbox-wrapper">
+          <input type="checkbox" id="save-payment">
+          <label for="save-payment">Zahlungsinformationen für zukünftige Käufe speichern</label>
+        </div>
+        <button type="submit" id="confirm-payment-btn">Zahlung bestätigen</button>
+      </form>
+    </div>
+</div>

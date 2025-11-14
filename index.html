@@ -6,7 +6,7 @@
     <title>Coin Rain</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="Shop/shopstyle.css" />
+    <link rel="stylesheet" href="shop/modals.css" />
 </head>
 <body>
   <header>
@@ -14,78 +14,36 @@
     <button id="open-mtx-shop-btn" class="mtx-open-btn">
         <i class="fa-solid fa-store"></i> Premium Shop
     </button>
+    <div id="upgrade-chip-display">
+        <i class="fa-solid fa-microchip"></i>
+        <span id="upgrade-chip-count">0</span>
+    </div>
+    <div id="crystal-display">
+        <i class="fa-solid fa-gem"></i>
+        <span id="crystal-count">0</span>
+    </div>
     <div id="coin-display">
         <i class="fa-solid fa-coins"></i>
         <span id="coin-count">0</span>
     </div>
+    
+    <div id="auth-status">
+        </div>
   </header>
 
-  <div id="mtx-shop-modal" class="mtx-modal">
-    <div class="mtx-content">
-      <span id="mtx-close-btn" class="mtx-close-btn">&times;</span>
-      <h2>Premium Shop</h2>
-      <p>Unterstütze die Entwicklung und erhalte exklusive Boni!</p>
-
-      <section class="mtx-section">
-        <h3>Münz-Pakete</h3>
-        <div class="mtx-item-grid">
-          <div class="mtx-item">
-            <i class="fa-solid fa-coins mtx-icon-gold"></i>
-            <strong>Kleiner Beutel</strong>
-            <p>+10.000 Münzen</p>
-            <button class="mtx-buy-btn" data-type="coins" data-amount="10000">$0.99</button>
-          </div>
-          <div class="mtx-item">
-            <i class="fa-solid fa-coins mtx-icon-gold"></i>
-            <strong>Sack Münzen</strong>
-            <p>+150.000 Münzen</p>
-            <button class="mtx-buy-btn" data-type="coins" data-amount="150000">$9.99</button>
-          </div>
-          <div class="mtx-item">
-            <i class="fa-solid fa-coins mtx-icon-gold"></i>
-            <strong>Große Truhe</strong>
-            <p>+500.000 Münzen</p>
-            <button class="mtx-buy-btn" data-type="coins" data-amount="500000">$24.99</button>
-          </div>
-        </div>
-      </section>
-
-  <section class="mtx-section">
-    <h3>Spezial-Upgrades</h3>
-    <div class="mtx-item-grid">
-      <div class="mtx-item">
-        <i class="fa-solid fa-star mtx-icon-special"></i>
-        <strong>Permanenter 2x Multiplikator</strong>
-        <p>Verdoppelt *alle* Münzen, die du erhältst!</p>
-        <button class="mtx-buy-btn" data-type="multiplier" data-value="2">$4.99</button>
-      </div>
-      <div class="mtx-item">
-         <i class="fa-solid fa-bolt mtx-icon-special"></i>
-        <strong>Auto-Regen Boost</strong>
-        <p>Dein Auto-Regen wird 5x schneller!</p>
-        <button class="mtx-buy-btn" data-type="auto-rain-boost" data-value="5">$2.99</button>
-      </div>
-    </div>
-  </section>
-</div>
-  </div>
+  <div id="shop-modal-container"></div>
+  <div id="login-modal-container"></div> <div id="register-modal-container"></div> <div id="payment-modal-container"></div>
+  <div id="profile-modal-container"></div> 
+  
   <main>
-
-
     <section id="game-area">
         <div id="sky">
             <img id="cloud" src="./sprites/cloud1.png" alt="Wolke" />
-            <!-- Münzen-Container für animierte Münzen -->
             <div id="coin-container"></div>
         </div>
-
         <aside id="shop">
             <h2>Shop</h2>
-            <ul>
-                <li>Mehr Münzen pro Klick</li>
-                <li>Automatisches Regnen</li>
-                <!-- Hier später Shop Items -->
-            </ul>
+            <ul></ul>
         </aside>
     </section>
   </main>
@@ -93,7 +51,7 @@
   <footer>
     <p>© 2025 Coin Rain | Impressum | Datenschutz</p>
   </footer>
-  <script src="main.js"></script>
-  <script src="Shop/shop.js"></script>
+  
+  <script src="app.js" type="module"></script>
 </body>
 </html>
