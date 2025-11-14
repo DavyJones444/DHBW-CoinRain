@@ -2,11 +2,11 @@
 
 // Münz Tiers mit Daten und persistentem Freischaltstatus
 const coinTiers = [
-  {name: 'Bronze', color: 'bronze', baseValue: 1, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
-  {name: 'Silber', color: 'silver', baseValue: 5, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Gold', color: 'gold', baseValue: 20, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Diamant', color: 'cyan', baseValue: 100, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 5, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
+  {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
 ];
 
 // Globale Variablen
@@ -15,7 +15,7 @@ let coinsPerClick = coinTiers[0].baseValue;
 let permanentMultiplier = 1; // NEU: Globaler Multiplikator
 
 // Upgrade "Mehr Münzen pro Klick"
-let upgradeLevel = 0;
+let upgradeLevel = 1;
 const baseUpgradeCost = 25;
 const upgradeCostFactor = 1.95;
 let upgradeCost = baseUpgradeCost;
@@ -83,7 +83,7 @@ function loadGame() {
     });
   }
 
-  upgradeCost = calculateUpgradeCost(baseUpgradeCost, upgradeCostFactor, upgradeLevel);
+  upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, upgradeCostFactor, upgradeLevel);
   autoRainCost = calculateUpgradeCost(baseAutoRainCost, autoRainCostFactor, autoRainLevel);
 }
 
@@ -95,6 +95,35 @@ function calculateUpgradeCost(base, factor, level) {
 // Freigeschaltete Münztier basieren auf unlocked Property
 function getUnlockedTiers() {
   return coinTiers.filter(tier => tier.unlocked);
+}
+
+// Zurücksetzen des Fortschritts
+function reset() {
+  totalCoins = 0;
+  upgradeLevel = 1;
+  autoRainLevel = 0;
+  autoRainInterval = 5000;
+  coinsPerClick = coinTiers[0].baseValue;
+  permanentMultiplier = 1;
+
+  const saveData = {
+    totalCoins,
+    upgradeLevel,
+    autoRainLevel,
+    autoRainInterval,
+    coinsPerClick,
+    permanentMultiplier,
+    coinTiers: [
+      {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 5, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
+      {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+      {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+      {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+      {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+    ]
+  };
+  localStorage.setItem('coinRainSave', JSON.stringify(saveData));
+  loadGame();
+  updateShopUI();
 }
 
 // Freischaltungen basierend auf totalCoins dauerhaft setzen
@@ -159,7 +188,7 @@ function buyUpgrade() {
     totalCoins -= upgradeCost;
     upgradeLevel++;
     coinsPerClick = (upgradeLevel + 1) * coinTiers[0].baseValue;
-    upgradeCost = calculateUpgradeCost(baseUpgradeCost, upgradeCostFactor, upgradeLevel);
+    upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, upgradeCostFactor, upgradeLevel);
     coinCountEl.textContent = totalCoins;
     updateShopUI();
     saveGame();
@@ -188,7 +217,7 @@ function buyAutoRain() {
 // Upgrade kaufen: Chance Upgrade für Münztier
 function buyChanceUpgrade(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(baseChanceUpgradeCost, upgradeTierCostFactor, tier.chanceLevel);
+  const cost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.chanceLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
     tier.chanceLevel++;
@@ -203,7 +232,7 @@ function buyChanceUpgrade(tierIndex) {
 // Upgrade kaufen: Wert Upgrade für Münztier
 function buyValueUpgrade(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(baseValueUpgradeCost, upgradeTierCostFactor, tier.valueLevel);
+  const cost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.valueLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
     tier.valueLevel++;
@@ -219,28 +248,28 @@ function buyValueUpgrade(tierIndex) {
 function updateShopUI() {
   let html = `
     <li>
-      Lv. ${upgradeLevel} Münzen pro Klick
-      <button id="buy-upgrade-btn">${upgradeCost} Münzen</button>
+      Münzen pro Klick | Lv. ${upgradeLevel}
+      <button id="buy-upgrade-btn">Upgrade: ${upgradeCost} Münzen</button>
     </li>
     <li>
-      Lv. ${autoRainLevel} Auto Münzregen
-      <button id="buy-auto-rain-btn">${autoRainCost} Münzen</button>
+      Auto Münzregen | Lv. ${autoRainLevel}
+      <button id="buy-auto-rain-btn">Upgrade: ${autoRainCost} Münzen</button>
     </li>
   `;
 
   // Anzeigen für freigeschaltete Münzen (außer Bronze)
   getUnlockedTiers().slice(1).forEach((tier, i) => {
-    const chanceCost = calculateUpgradeCost(baseChanceUpgradeCost, upgradeTierCostFactor, tier.chanceLevel);
-    const valueCost = calculateUpgradeCost(baseValueUpgradeCost, upgradeTierCostFactor, tier.valueLevel);
+    const chanceCost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.chanceLevel);
+    const valueCost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.valueLevel);
 
     if ((getTierChance(tier)*100).toFixed(1) < 100) {
       html += `
       <li>
         <strong>${tier.name} Münze</strong>
         <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
-        <button data-index="${i+1}" class="buy-chance-btn">+5% (${chanceCost} Münzen)</button><br>
-        Wert: x${getTierValue(tier).toFixed(2)}
-        <button data-index="${i+1}" class="buy-value-btn">+20% (${valueCost} Münzen)</button>
+        <button data-index="${i+1}" class="buy-chance-btn">+5% ${chanceCost} Münzen</button><br>
+        Wert: ${getTierValue(tier).toFixed(0)} Münzen
+        <button data-index="${i+1}" class="buy-value-btn">+${(tier.baseValue*0.2).toFixed(0)} ${valueCost} Münzen</button>
       </li>
     `;
     } else {
@@ -250,7 +279,7 @@ function updateShopUI() {
         <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
         <br>
         Wert: x${getTierValue(tier).toFixed(2)}
-        <button data-index="${i+1}" class="buy-value-btn">+20% (${valueCost} Münzen)</button>
+        <button data-index="${i+1}" class="buy-value-btn">+20% ${valueCost} Münzen</button>
       </li>
     `;
     }
