@@ -3,10 +3,10 @@
 
 // Importiere die Initialisierungs-Funktionen von jedem Modul
 import { initGame, updateUI } from './main.js';
-import { initAuth } from './Shop/auth.js';
-import { initPayment } from './Shop/payment.js';
-import { initShop } from './Shop/shop.js';
-import { initProfile } from './Shop/profile.js';
+import { initAuth } from './shop/auth.js';
+import { initPayment } from './shop/payment.js';
+import { initShop } from './shop/shop.js';
+import { initProfile } from './shop/profile.js';
 
 /**
  * Lädt HTML-Fragmente (Partials) in die Container-Divs.
@@ -23,11 +23,11 @@ async function loadHtmlPartials() {
 
         // Lade alle Modals parallel
         await Promise.all([
-            fetchHtml('Shop/shop-modal.html', 'shop-modal-container'),
-            fetchHtml('Shop/login-modal.html', 'login-modal-container'),
-            fetchHtml('Shop/register-modal.html', 'register-modal-container'),
-            fetchHtml('Shop/payment-modal.html', 'payment-modal-container'),
-            fetchHtml('Shop/profile-modal.html', 'profile-modal-container')
+            fetchHtml('shop/shop-modal.html', 'shop-modal-container'),
+            fetchHtml('shop/login-modal.html', 'login-modal-container'),
+            fetchHtml('shop/register-modal.html', 'register-modal-container'),
+            fetchHtml('shop/payment-modal.html', 'payment-modal-container'),
+            fetchHtml('shop/profile-modal.html', 'profile-modal-container')
         ]);
 
     } catch (error) {
@@ -49,6 +49,7 @@ async function main() {
     // Initialisiere die Modal-Module
     initAuth();
     initPayment();
+    initProfile();
     initShop();     // Shop als letztes, da er von Auth und Payment abhängt
 }
 

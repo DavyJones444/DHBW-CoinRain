@@ -193,3 +193,8 @@ footer {
   color: darkviolet;
 }
 
+.uc-icon {
+  color: #ff69b4; /* Ein leuchtendes Pink/Lila */
+  font-size: 0.9em;
+  margin-left: 2px;
+}

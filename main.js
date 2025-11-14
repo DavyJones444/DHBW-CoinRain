@@ -1,377 +1,47 @@
-/**
-
-// Münz Tiers mit Daten und persistentem Freischaltstatus
-const coinTiers = [
-  {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 5, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
-  {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-];
-
-// Globale Variablen
-let totalCoins = 0;
-let coinsPerClick = coinTiers[0].baseValue;
-let permanentMultiplier = 1; // NEU: Globaler Multiplikator
-
-// Upgrade "Mehr Münzen pro Klick"
-let upgradeLevel = 1;
-const baseUpgradeCost = 25;
-const upgradeCostFactor = 1.95;
-let upgradeCost = baseUpgradeCost;
-
-// Upgrade Automatischer Münzregen Variablen
-let autoRainLevel = 0;
-const baseAutoRainCost = 100;
-const autoRainCostFactor = 1.15;
-let autoRainCost = baseAutoRainCost;
-let autoRainInterval = 5000; // ms Startintervall
-const autoRainIntervalFactor = 0.85;
-const autoRainMinInterval = 500;
-let autoRainTimer = null;
-
-// Upgrade Chance und Wert Startpreise und Steigerungsfaktor pro Münztier
-const baseChanceUpgradeCost = 200;
-const baseValueUpgradeCost = 300;
-const upgradeTierCostFactor = 1.3;
-
-// DOM Elemente
-const coinCountEl = document.getElementById('coin-count');
-const rainButton = document.getElementById('rain-button');
-const coinContainer = document.getElementById('coin-container');
-const cloud = document.getElementById('cloud');
-const shopList = document.querySelector('#shop ul');
-
-// Speichern des Spielstands in localStorage
-function saveGame() {
-  const saveData = {
-    totalCoins,
-    upgradeLevel,
-    autoRainLevel,
-    autoRainInterval,
-    coinsPerClick,
-    permanentMultiplier,
-    coinTiers: coinTiers.map(t => ({
-      unlocked: t.unlocked,
-      chanceLevel: t.chanceLevel,
-      valueLevel: t.valueLevel,
-    })),
-  };
-  localStorage.setItem('coinRainSave', JSON.stringify(saveData));
-}
-
-// Laden des Spielstands aus localStorage
-function loadGame() {
-  const saved = localStorage.getItem('coinRainSave');
-  if (!saved) return;
-  const saveData = JSON.parse(saved);
-
-  totalCoins = saveData.totalCoins ?? totalCoins;
-  upgradeLevel = saveData.upgradeLevel ?? upgradeLevel;
-  autoRainLevel = saveData.autoRainLevel ?? autoRainLevel;
-  autoRainInterval = saveData.autoRainInterval ?? autoRainInterval;
-  coinsPerClick = saveData.coinsPerClick ?? coinsPerClick;
-  permanentMultiplier = saveData.permanentMultiplier ?? permanentMultiplier;
-
-  if (saveData.coinTiers) {
-    saveData.coinTiers.forEach((t, i) => {
-      if (coinTiers[i]) {
-        coinTiers[i].unlocked = t.unlocked ?? coinTiers[i].unlocked;
-        coinTiers[i].chanceLevel = t.chanceLevel ?? coinTiers[i].chanceLevel;
-        coinTiers[i].valueLevel = t.valueLevel ?? coinTiers[i].valueLevel;
-      }
-    });
-  }
-
-  upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, upgradeCostFactor, upgradeLevel);
-  autoRainCost = calculateUpgradeCost(baseAutoRainCost, autoRainCostFactor, autoRainLevel);
-}
-
-// Berechnung Upgradekosten
-function calculateUpgradeCost(base, factor, level) {
-  return Math.floor(base * Math.pow(factor, level));
-}
-
-// Freigeschaltete Münztier basieren auf unlocked Property
-function getUnlockedTiers() {
-  return coinTiers.filter(tier => tier.unlocked);
-}
-
-// Zurücksetzen des Fortschritts
-function reset() {
-  totalCoins = 0;
-  upgradeLevel = 1;
-  autoRainLevel = 0;
-  autoRainInterval = 5000;
-  coinsPerClick = coinTiers[0].baseValue;
-  permanentMultiplier = 1;
-
-  const saveData = {
-    totalCoins,
-    upgradeLevel,
-    autoRainLevel,
-    autoRainInterval,
-    coinsPerClick,
-    permanentMultiplier,
-    coinTiers: [
-      {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 5, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
-      {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-      {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-      {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-      {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-    ]
-  };
-  localStorage.setItem('coinRainSave', JSON.stringify(saveData));
-  loadGame();
-  updateShopUI();
-}
-
-// Freischaltungen basierend auf totalCoins dauerhaft setzen
-function updateUnlockedTiers() {
-  coinTiers.forEach(tier => {
-    if (!tier.unlocked && totalCoins >= tier.unlockAt) {
-      tier.unlocked = true;
-    }
-  });
-}
-
-// Zufallsprüfung für Chance
-function chanceCheck(probability) {
-  return Math.random() < probability;
-}
-
-// Berechnung der effektiven Chance pro Münztier
-function getTierChance(tier) {
-  return tier.chanceBase + tier.chanceLevel * 0.05;
-}
-
-// Berechnung effektiver Münzwert mit Wert-Upgrades
-function getTierValue(tier) {
-  return tier.baseValue * (1 + tier.valueLevel * 0.2);
-}
-
-// Münzen hinzufügen mit Tier-Logik und Animationen
-function addCoinsWithTiers(amount = 1) {
-  let coinsThisClick = 0;
-  let animations = [];
-
-  // Bronze Münze immer
-  coinsThisClick += getTierValue(coinTiers[0]) * amount;
-  animations.push({color: 'bronze', count: amount});
-
-  // Weitere Münztier basierend auf unlocked und Chance
-  const unlocked = getUnlockedTiers();
-  unlocked.slice(1).forEach(tier => {
-      if (chanceCheck(getTierChance(tier))) {
-        coinsThisClick += getTierValue(tier);
-        animations.push({color: tier.color, count: 1});
-      }
-  });
-
-  totalCoins += (coinsThisClick * permanentMultiplier);
-  updateUnlockedTiers();
-
-  coinCountEl.textContent = totalCoins;
-  updateShopUI();
-  saveGame();
-
-  animations.forEach(anim => {
-    for (let i = 0; i < anim.count; i++) {
-      dropCoinAnimation(anim.color);
-    }
-  });
-}
-
-// Upgrade kaufen: Mehr Münzen pro Klick
-function buyUpgrade() {
-  if (totalCoins >= upgradeCost) {
-    totalCoins -= upgradeCost;
-    upgradeLevel++;
-    coinsPerClick = (upgradeLevel + 1) * coinTiers[0].baseValue;
-    upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, upgradeCostFactor, upgradeLevel);
-    coinCountEl.textContent = totalCoins;
-    updateShopUI();
-    saveGame();
-  } else {
-    alert("Nicht genug Münzen für das Upgrade!");
-  }
-}
-
-// Upgrade kaufen: Automatischer Münzregen
-function buyAutoRain() {
-  if (totalCoins >= autoRainCost) {
-    totalCoins -= autoRainCost;
-    autoRainLevel++;
-    autoRainCost = calculateUpgradeCost(baseAutoRainCost, autoRainCostFactor, autoRainLevel);
-    autoRainInterval = Math.max(autoRainInterval * autoRainIntervalFactor, autoRainMinInterval);
-    if (autoRainTimer) clearInterval(autoRainTimer);
-    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
-    coinCountEl.textContent = totalCoins;
-    updateShopUI();
-    saveGame();
-  } else {
-    alert("Nicht genug Münzen für automatischen Münzregen!");
-  }
-}
-
-// Upgrade kaufen: Chance Upgrade für Münztier
-function buyChanceUpgrade(tierIndex) {
-  const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.chanceLevel);
-  if (totalCoins >= cost) {
-    totalCoins -= cost;
-    tier.chanceLevel++;
-    coinCountEl.textContent = totalCoins;
-    updateShopUI();
-    saveGame();
-  } else {
-    alert(`Nicht genug Münzen für Chance-Upgrade (${tier.name})!`);
-  }
-}
-
-// Upgrade kaufen: Wert Upgrade für Münztier
-function buyValueUpgrade(tierIndex) {
-  const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.valueLevel);
-  if (totalCoins >= cost) {
-    totalCoins -= cost;
-    tier.valueLevel++;
-    coinCountEl.textContent = totalCoins;
-    updateShopUI();
-    saveGame();
-  } else {
-    alert(`Nicht genug Münzen für Wert-Upgrade (${tier.name})!`);
-  }
-}
-
-// Shop UI aktualisieren
-function updateShopUI() {
-  let html = `
-    <li>
-      Münzen pro Klick | Lv. ${upgradeLevel}
-      <button id="buy-upgrade-btn">Upgrade: ${upgradeCost} Münzen</button>
-    </li>
-    <li>
-      Auto Münzregen | Lv. ${autoRainLevel}
-      <button id="buy-auto-rain-btn">Upgrade: ${autoRainCost} Münzen</button>
-    </li>
-  `;
-
-  // Anzeigen für freigeschaltete Münzen (außer Bronze)
-  getUnlockedTiers().slice(1).forEach((tier, i) => {
-    const chanceCost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.chanceLevel);
-    const valueCost = calculateUpgradeCost(tier.basePrice, upgradeTierCostFactor, tier.valueLevel);
-
-    if ((getTierChance(tier)*100).toFixed(1) < 100) {
-      html += `
-      <li>
-        <strong>${tier.name} Münze</strong>
-        <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
-        <button data-index="${i+1}" class="buy-chance-btn">+5% ${chanceCost} Münzen</button><br>
-        Wert: ${getTierValue(tier).toFixed(0)} Münzen
-        <button data-index="${i+1}" class="buy-value-btn">+${(tier.baseValue*0.2).toFixed(0)} ${valueCost} Münzen</button>
-      </li>
-    `;
-    } else {
-      html += `
-      <li>
-        <strong>${tier.name} Münze</strong>
-        <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
-        <br>
-        Wert: x${getTierValue(tier).toFixed(2)}
-        <button data-index="${i+1}" class="buy-value-btn">+20% ${valueCost} Münzen</button>
-      </li>
-    `;
-    }
-  });
-
-  shopList.innerHTML = html;
-
-  // Eventlistener an Buttons anhängen
-  document.getElementById('buy-upgrade-btn').addEventListener('click', buyUpgrade);
-  document.getElementById('buy-auto-rain-btn').addEventListener('click', buyAutoRain);
-
-  document.querySelectorAll('.buy-chance-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => buyChanceUpgrade(parseInt(e.target.dataset.index)));
-  });
-
-  document.querySelectorAll('.buy-value-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => buyValueUpgrade(parseInt(e.target.dataset.index)));
-  });
-}
-
-// Event: Klick auf Button "Münze regnen lassen"
-rainButton.addEventListener('click', () => {
-  addCoinsWithTiers(coinsPerClick);
-});
-
-// Automatischer Münzregen Timer starten wenn nötig
-if (autoRainLevel > 0 && !autoRainTimer) {
-  autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
-}
-
-// Beim Laden Spielstand laden, UI und Timer setzen
-loadGame();
-updateUnlockedTiers();
-updateShopUI();
-
-// Münz-Animation mit zufälliger Position, Größe und Geschwindigkeit
-function dropCoinAnimation(color = 'bronze') {
-  const coin = document.createElement('i');
-  coin.className = `fa-solid fa-coins coin-falling coin-${color}`;
-  
-  const skyRect = coinContainer.getBoundingClientRect();
-  const cloudRect = cloud.getBoundingClientRect();
-  const cloudWidth = cloudRect.width;
-
-  const randomX = Math.random() * (cloudWidth - 20);
-  const startX = cloudRect.left + 15 - skyRect.left + randomX;
-  coin.style.left = `${startX}px`;
-
-  // Zufällige Fallgeschwindigkeit (Animationsdauer)
-  const minDuration = 1.5; // Sekunden
-  const maxDuration = 2.5;
-  const duration = (Math.random() * (maxDuration - minDuration) + minDuration).toFixed(2);
-  coin.style.animationDuration = `${duration}s`;
-
-  // Zufällige Größe der Münze
-  const minSize = 10; // px
-  const maxSize = 22;
-  const size = Math.floor(Math.random() * (maxSize - minSize) + minSize);
-  coin.style.fontSize = `${size}px`;
-
-  coinContainer.appendChild(coin);
-
-  coin.addEventListener('animationend', () => coin.remove());
-}*/
-
 /* main.js */
 /* Das Spiel-Modul. Es verwaltet den Spielstatus (Münzen, Kristalle, Upgrades). */
 
 // --- Konstanten und globale Variablen ---
 const coinTiers = [
-  // ... (deine coinTiers-Definition bleibt exakt gleich)
-  {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 5, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
-  {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
-  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 50, baseTierUCPrice: 1, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0, chanceUCLevel: 0, valueUCLevel: 0},
+  {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, baseTierUCPrice: 1, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0, chanceUCLevel: 0, valueUCLevel: 0},
+  {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, baseTierUCPrice: 1, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0, chanceUCLevel: 0, valueUCLevel: 0},
+  {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, baseTierUCPrice: 1, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0, chanceUCLevel: 0, valueUCLevel: 0},
+  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, baseTierUCPrice: 1, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0, chanceUCLevel: 0, valueUCLevel: 0},
 ];
 
-let totalCoins = 0;
-let totalCrystals = 0; // Wichtig
-let coinsPerClick = 1;
-let permanentMultiplier = 1;
+// Basis-Upgrades (Klick & Auto)
 let upgradeLevel = 1;
 let autoRainLevel = 0;
+let upgradeUCLevel = 0;
+let autoRainUCLevel = 0;
+
+// MÜNZ-Kosten (Basis)
+const upgradeCoinCostFactor = 1.95;
+const baseAutoRainCoinCost = 100;
+const autoRainCoinCostFactor = 1.15;
+
+// UC-Kosten (Basis)
+const baseUpgradeUCCost = 1;
+const baseAutoRainUCCost = 1;
+
+// Währungen
+let totalCoins = 0;
+let totalCrystals = 0;
+let totalUpgradeChips = 0;
+let coinsPerClick = 1;
+let permanentMultiplier = 1;
 let autoRainInterval = 5000;
 let autoRainTimer = null;
-let upgradeCost, autoRainCost;
+
+// Kosten-Variablen
+let upgradeCoinCost, autoRainCoinCost;
+let upgradeUCCost, autoRainUCCost;
 
 // --- DOM Elemente ---
-// Wir holen sie einmal und exportieren sie, damit andere Module sie nicht suchen müssen
 export const coinCountEl = document.getElementById('coin-count');
 export const crystalCountEl = document.getElementById('crystal-count');
+export const chipCountEl = document.getElementById('upgrade-chip-count');
 const rainButton = document.getElementById('rain-button');
 const coinContainer = document.getElementById('coin-container');
 const cloud = document.getElementById('cloud');
@@ -380,17 +50,16 @@ const shopList = document.querySelector('#shop ul');
 // --- Kern-Funktionen (Speichern, Laden) ---
 export function saveGame() {
   const saveData = {
-    totalCoins,
-    totalCrystals,
-    upgradeLevel,
-    autoRainLevel,
-    autoRainInterval,
-    coinsPerClick,
-    permanentMultiplier,
+    totalCoins, totalCrystals, totalUpgradeChips,
+    upgradeLevel, autoRainLevel, autoRainInterval,
+    upgradeUCLevel, autoRainUCLevel, // NEU
+    coinsPerClick, permanentMultiplier,
     coinTiers: coinTiers.map(t => ({
       unlocked: t.unlocked,
       chanceLevel: t.chanceLevel,
       valueLevel: t.valueLevel,
+      chanceUCLevel: t.chanceUCLevel, // NEU
+      valueUCLevel: t.valueUCLevel, // NEU
     })),
   };
   localStorage.setItem('coinRainSave', JSON.stringify(saveData));
@@ -403,8 +72,11 @@ function loadGame() {
 
   totalCoins = saveData.totalCoins ?? 0;
   totalCrystals = saveData.totalCrystals ?? 0;
+  totalUpgradeChips = saveData.totalUpgradeChips ?? 0;
   upgradeLevel = saveData.upgradeLevel ?? 1;
   autoRainLevel = saveData.autoRainLevel ?? 0;
+  upgradeUCLevel = saveData.upgradeUCLevel ?? 0; // NEU
+  autoRainUCLevel = saveData.autoRainUCLevel ?? 0; // NEU
   autoRainInterval = saveData.autoRainInterval ?? 5000;
   coinsPerClick = saveData.coinsPerClick ?? 1;
   permanentMultiplier = saveData.permanentMultiplier ?? 1;
@@ -415,6 +87,8 @@ function loadGame() {
         coinTiers[i].unlocked = t.unlocked;
         coinTiers[i].chanceLevel = t.chanceLevel;
         coinTiers[i].valueLevel = t.valueLevel;
+        coinTiers[i].chanceUCLevel = t.chanceUCLevel ?? 0; // NEU
+        coinTiers[i].valueUCLevel = t.valueUCLevel ?? 0; // NEU
       }
     });
   }
@@ -424,7 +98,8 @@ function loadGame() {
 export function updateUI() {
     updateCoinDisplay();
     updateCrystalDisplay();
-    updateShopUI(); // Aktualisiert den In-Game-Shop
+    updateChipDisplay();
+    updateShopUI(); 
 }
 export function updateCoinDisplay() {
     if(coinCountEl) coinCountEl.textContent = Math.floor(totalCoins);
@@ -432,66 +107,59 @@ export function updateCoinDisplay() {
 export function updateCrystalDisplay() {
     if(crystalCountEl) crystalCountEl.textContent = totalCrystals;
 }
-
-// --- Exportierte API für den Shop ---
-export function addCrystals(amount) {
-  totalCrystals += amount;
-  updateCrystalDisplay();
-  saveGame();
+export function updateChipDisplay() {
+    if(chipCountEl) chipCountEl.textContent = totalUpgradeChips;
 }
 
+// --- Exportierte API für den Shop (bleibt gleich) ---
+// (addCrystals, getTotalCrystals, spendCrystalsForUpgradeChips, ...)
+// ... (Alle diese Funktionen sind korrekt und bleiben unverändert) ...
+export function addCrystals(amount) {
+  totalCrystals += amount; updateCrystalDisplay(); saveGame();
+}
 export function getTotalCrystals() {
   return totalCrystals;
 }
-
-export function spendCrystalsForCoins(crystalCost, coinAmount) {
-  if (totalCrystals < crystalCost) {
-    alert("Nicht genügend Kristalle!");
-    return false;
-  }
-  totalCrystals -= crystalCost;
-  totalCoins += coinAmount;
-  updateCrystalDisplay();
-  updateCoinDisplay();
-  alert(`Du hast ${coinAmount} Münzen für ${crystalCost} Kristalle gekauft!`);
-  saveGame();
-  return true;
+export function spendCrystalsForUpgradeChips(crystalCost, chipAmount) {
+  if (totalCrystals < crystalCost) { alert("Nicht genügend Kristalle!"); return false; }
+  totalCrystals -= crystalCost; totalUpgradeChips += chipAmount;
+  updateCrystalDisplay(); updateChipDisplay();
+  alert(`Du hast ${chipAmount} Upgrade-Chips für ${crystalCost} Kristalle gekauft!`);
+  saveGame(); return true;
 }
-
+export function spendCrystalsForCoins(crystalCost, coinAmount) {
+  if (totalCrystals < crystalCost) { alert("Nicht genügend Kristalle!"); return false; }
+  totalCrystals -= crystalCost; totalCoins += coinAmount;
+  updateCrystalDisplay(); updateCoinDisplay();
+  alert(`Du hast ${coinAmount} Münzen für ${crystalCost} Kristalle gekauft!`);
+  saveGame(); return true;
+}
 export function spendCrystalsForMultiplier(crystalCost, multiplier) {
-  if (totalCrystals < crystalCost) {
-    alert("Nicht genügend Kristalle!");
-    return false;
-  }
-  totalCrystals -= crystalCost;
-  permanentMultiplier *= multiplier;
+  if (totalCrystals < crystalCost) { alert("Nicht genügend Kristalle!"); return false; }
+  totalCrystals -= crystalCost; permanentMultiplier *= multiplier;
   updateCrystalDisplay();
   alert(`Permanenter ${multiplier}x Multiplikator gekauft!`);
-  saveGame();
-  return true;
+  saveGame(); return true;
 }
-
 export function spendCrystalsForAutoRainBoost(crystalCost, factor) {
-  if (totalCrystals < crystalCost) {
-    alert("Nicht genügend Kristalle!");
-    return false;
-  }
+  if (totalCrystals < crystalCost) { alert("Nicht genügend Kristalle!"); return false; }
   totalCrystals -= crystalCost;
-  autoRainInterval = Math.max(autoRainInterval / factor, 500); // 500 = autoRainMinInterval
+  autoRainInterval = Math.max(autoRainInterval / factor, 500);
   if (autoRainTimer) {
     clearInterval(autoRainTimer);
     autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
   }
   updateCrystalDisplay();
   alert(`Auto-Regen Boost (${factor}x) gekauft!`);
-  saveGame();
-  return true;
+  saveGame(); return true;
 }
 
-// --- Restliche Spiellogik (bleibt fast unverändert) ---
+// --- Restliche Spiellogik ---
 function calculateUpgradeCost(base, factor, level) {
+  // Diese Funktion wird NUR NOCH FÜR MÜNZEN verwendet
   return Math.floor(base * Math.pow(factor, level));
 }
+// ... (getUnlockedTiers, updateUnlockedTiers, chanceCheck, getTierChance, getTierValue bleiben gleich) ...
 function getUnlockedTiers() {
   return coinTiers.filter(tier => tier.unlocked);
 }
@@ -506,13 +174,13 @@ function chanceCheck(probability) { return Math.random() < probability; }
 function getTierChance(tier) { return tier.chanceBase + tier.chanceLevel * 0.05; }
 function getTierValue(tier) { return tier.baseValue * (1 + tier.valueLevel * 0.2); }
 
+
 function addCoinsWithTiers(amount = 1) {
+  // ... (Diese Funktion bleibt unverändert) ...
   let coinsThisClick = 0;
   let animations = [];
-
   coinsThisClick += getTierValue(coinTiers[0]) * amount;
   animations.push({color: 'bronze', count: amount});
-
   const unlocked = getUnlockedTiers();
   unlocked.slice(1).forEach(tier => {
       if (chanceCheck(getTierChance(tier))) {
@@ -520,15 +188,11 @@ function addCoinsWithTiers(amount = 1) {
         animations.push({color: tier.color, count: 1});
       }
   });
-
   totalCoins += (coinsThisClick * permanentMultiplier);
   updateUnlockedTiers();
-  
-  // UI wird nur noch hier aktualisiert
   updateCoinDisplay();
-  updateShopUI(); 
+  updateShopUI();
   saveGame();
-
   animations.forEach(anim => {
     for (let i = 0; i < anim.count; i++) {
       dropCoinAnimation(anim.color);
@@ -536,107 +200,171 @@ function addCoinsWithTiers(amount = 1) {
   });
 }
 
-// ... (buyUpgrade, buyAutoRain, buyChanceUpgrade, buyValueUpgrade bleiben exakt gleich) ...
-// ... (Wir müssen sie hier nur aufrufen) ...
-function buyUpgrade() {
-  upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, 1.95, upgradeLevel);
-  if (totalCoins >= upgradeCost) {
-    totalCoins -= upgradeCost;
-    upgradeLevel++;
+// --- In-Game Shop Logik ---
+
+// 1. Münzen pro Klick
+function buyUpgradeWithCoins() {
+  if (totalCoins >= upgradeCoinCost) {
+    totalCoins -= upgradeCoinCost;
+    upgradeLevel++; // Erhöhe das allgemeine Level
     coinsPerClick = (upgradeLevel + 1) * coinTiers[0].baseValue;
-    updateCoinDisplay();
-    updateShopUI();
-    saveGame();
-  } else {
-    alert("Nicht genug Münzen für das Upgrade!");
-  }
+    updateCoinDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Münzen!"); }
+}
+function buyUpgradeWithUCs() {
+  if (totalUpgradeChips >= upgradeUCCost) {
+    totalUpgradeChips -= upgradeUCCost;
+    upgradeLevel++; // Erhöhe das allgemeine Level
+    upgradeUCLevel++; // Erhöhe das UC-Level
+    coinsPerClick = (upgradeLevel + 1) * coinTiers[0].baseValue;
+    updateChipDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Upgrade-Chips!"); }
 }
 
-function buyAutoRain() {
-  autoRainCost = calculateUpgradeCost(100, 1.15, autoRainLevel);
-  if (totalCoins >= autoRainCost) {
-    totalCoins -= autoRainCost;
-    autoRainLevel++;
+// 2. Auto-Regen
+function buyAutoRainWithCoins() {
+  if (totalCoins >= autoRainCoinCost) {
+    totalCoins -= autoRainCoinCost;
+    autoRainLevel++; // Erhöhe das allgemeine Level
     autoRainInterval = Math.max(autoRainInterval * 0.85, 500);
     if (autoRainTimer) clearInterval(autoRainTimer);
     autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
-    updateCoinDisplay();
-    updateShopUI();
-    saveGame();
-  } else {
-    alert("Nicht genug Münzen für automatischen Münzregen!");
-  }
+    updateCoinDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Münzen!"); }
 }
-function buyChanceUpgrade(tierIndex) {
+function buyAutoRainWithUCs() {
+  if (totalUpgradeChips >= autoRainUCCost) {
+    totalUpgradeChips -= autoRainUCCost;
+    autoRainLevel++; // Erhöhe das allgemeine Level
+    autoRainUCLevel++; // Erhöhe das UC-Level
+    autoRainInterval = Math.max(autoRainInterval * 0.85, 500);
+    if (autoRainTimer) clearInterval(autoRainTimer);
+    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
+    updateChipDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Upgrade-Chips!"); }
+}
+
+// 3. Tier-Chance
+function buyChanceUpgradeWithCoins(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(tier.basePrice, 1.3, tier.chanceLevel);
+  const cost = calculateUpgradeCost(tier.baseTierCoinPrice, 1.4, tier.chanceLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
-    tier.chanceLevel++;
-    updateCoinDisplay();
-    updateShopUI();
-    saveGame();
-  } else {
-    alert(`Nicht genug Münzen für Chance-Upgrade (${tier.name})!`);
-  }
+    tier.chanceLevel++; // Erhöhe das allgemeine Level
+    updateCoinDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Münzen!"); }
 }
-function buyValueUpgrade(tierIndex) {
+function buyChanceUpgradeWithUCs(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(tier.basePrice, 1.3, tier.valueLevel);
+  const cost = tier.baseTierUCPrice + tier.chanceUCLevel; // Additive Kosten
+  if (totalUpgradeChips >= cost) {
+    totalUpgradeChips -= cost;
+    tier.chanceLevel++; // Erhöhe das allgemeine Level
+    tier.chanceUCLevel++; // Erhöhe das UC-Level
+    updateChipDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Upgrade-Chips!"); }
+}
+
+// 4. Tier-Wert
+function buyValueUpgradeWithCoins(tierIndex) {
+  const tier = coinTiers[tierIndex];
+  const cost = calculateUpgradeCost(tier.baseTierCoinPrice, 1.5, tier.valueLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
-    tier.valueLevel++;
-    updateCoinDisplay();
-    updateShopUI();
-    saveGame();
-  } else {
-    alert(`Nicht genug Münzen für Wert-Upgrade (${tier.name})!`);
-  }
+    tier.valueLevel++; // Erhöhe das allgemeine Level
+    updateCoinDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Münzen!"); }
+}
+function buyValueUpgradeWithUCs(tierIndex) {
+  const tier = coinTiers[tierIndex];
+  const cost = tier.baseTierUCPrice + tier.valueUCLevel; // Additive Kosten
+  if (totalUpgradeChips >= cost) {
+    totalUpgradeChips -= cost;
+    tier.valueLevel++; // Erhöhe das allgemeine Level
+    tier.valueUCLevel++; // Erhöhe das UC-Level
+    updateChipDisplay(); updateShopUI(); saveGame();
+  } else { alert("Nicht genug Upgrade-Chips!"); }
 }
 
 function updateShopUI() {
-  if (!shopList) return; // Sicherstellen, dass das Element existiert
-  upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, 1.95, upgradeLevel);
-  autoRainCost = calculateUpgradeCost(100, 1.15, autoRainLevel);
+  if (!shopList) return;
+  
+  // Berechne MÜNZ-Kosten (exponentiell)
+  upgradeCoinCost = calculateUpgradeCost(coinTiers[0].basePrice, upgradeCoinCostFactor, upgradeLevel);
+  autoRainCoinCost = calculateUpgradeCost(baseAutoRainCoinCost, autoRainCoinCostFactor, autoRainLevel);
+  
+  // Berechne UC-Kosten (additiv)
+  upgradeUCCost = baseUpgradeUCCost + upgradeUCLevel;
+  autoRainUCCost = baseAutoRainUCCost + autoRainUCLevel;
 
   let html = `
     <li>
-      Münzen pro Klick | Lv. ${upgradeLevel}
-      <button id="buy-upgrade-btn">Upgrade: ${upgradeCost} Münzen</button>
+      Münzen pro Klick | Lv. ${upgradeLevel}<br>
+      <button id="buy-upgrade-coin-btn">Kauf: ${upgradeCoinCost} Münzen</button>
+      <button id="buy-upgrade-uc-btn">Kauf: ${upgradeUCCost} <i class="fa-solid fa-microchip uc-icon"></i></button>
     </li>
     <li>
-      Auto Münzregen | Lv. ${autoRainLevel}
-      <button id="buy-auto-rain-btn">Upgrade: ${autoRainCost} Münzen</button>
+      Auto Münzregen | Lv. ${autoRainLevel}<br>
+      <button id="buy-auto-rain-coin-btn">Kauf: ${autoRainCoinCost} Münzen</button>
+      <button id="buy-auto-rain-uc-btn">Kauf: ${autoRainUCCost} <i class="fa-solid fa-microchip uc-icon"></i></button>
     </li>
   `;
+  
   getUnlockedTiers().slice(1).forEach((tier, i) => {
-    const chanceCost = calculateUpgradeCost(tier.basePrice, 1.3, tier.chanceLevel);
-    const valueCost = calculateUpgradeCost(tier.basePrice, 1.3, tier.valueLevel);
+    const tierIndex = i + 1; // 1 = Silber, 2 = Gold...
+    
+    // Berechne MÜNZ-Kosten (exponentiell)
+    const chanceCoinCost = calculateUpgradeCost(tier.basePrice, 1.4, tier.chanceLevel);
+    const valueCoinCost = calculateUpgradeCost(tier.basePrice, 1.5, tier.valueLevel);
+    
+    // Berechne UC-Kosten (additiv)
+    const chanceUCCost = tier.baseTierUCPrice + tier.chanceUCLevel;
+    const valueUCCost = tier.baseTierUCPrice + tier.valueUCLevel;
+    
     const tierChance = (getTierChance(tier)*100).toFixed(1);
     
     html += `<li><strong>${tier.name} Münze</strong><br>`;
+    
+    // Chance-Buttons
     if (tierChance < 100) {
-      html += `Chance: ${tierChance}% <button data-index="${i+1}" class="buy-chance-btn">+5% ${chanceCost} Münzen</button><br>`;
+      html += `Chance: ${tierChance}%<br>
+        <button data-index="${tierIndex}" class="buy-chance-coin-btn">+5% (${chanceCoinCost} Münzen)</button>
+        <button data-index="${tierIndex}" class="buy-chance-uc-btn">+5% (${chanceUCCost} <i class="fa-solid fa-microchip uc-icon"></i>)</button><br>`;
     } else {
       html += `Chance: ${tierChance}%<br>`;
     }
-    html += `Wert: ${getTierValue(tier).toFixed(0)} Münzen <button data-index="${i+1}" class="buy-value-btn">+${(tier.baseValue*0.2).toFixed(0)} ${valueCost} Münzen</button></li>`;
+    
+    // Wert-Buttons
+    html += `Wert: ${getTierValue(tier).toFixed(0)} Münzen<br>
+      <button data-index="${tierIndex}" class="buy-value-coin-btn">+${(tier.baseValue*0.2).toFixed(0)} (${valueCoinCost} Münzen)</button>
+      <button data-index="${tierIndex}" class="buy-value-uc-btn">+${(tier.baseValue*0.2).toFixed(0)} (${valueUCCost} <i class="fa-solid fa-microchip uc-icon"></i>)</button>
+      </li>`;
   });
   shopList.innerHTML = html;
   
-  // Eventlistener (neu binden)
-  document.getElementById('buy-upgrade-btn').addEventListener('click', buyUpgrade);
-  document.getElementById('buy-auto-rain-btn').addEventListener('click', buyAutoRain);
-  document.querySelectorAll('.buy-chance-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => buyChanceUpgrade(parseInt(e.target.dataset.index)));
+  // Eventlistener für ALLE 8 Button-Typen neu binden
+  document.getElementById('buy-upgrade-coin-btn').addEventListener('click', buyUpgradeWithCoins);
+  document.getElementById('buy-upgrade-uc-btn').addEventListener('click', buyUpgradeWithUCs);
+  document.getElementById('buy-auto-rain-coin-btn').addEventListener('click', buyAutoRainWithCoins);
+  document.getElementById('buy-auto-rain-uc-btn').addEventListener('click', buyAutoRainWithUCs);
+  
+  document.querySelectorAll('.buy-chance-coin-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => buyChanceUpgradeWithCoins(parseInt(e.target.dataset.index)));
   });
-  document.querySelectorAll('.buy-value-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => buyValueUpgrade(parseInt(e.target.dataset.index)));
+  document.querySelectorAll('.buy-chance-uc-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => buyChanceUpgradeWithUCs(parseInt(e.target.dataset.index)));
+  });
+  
+  document.querySelectorAll('.buy-value-coin-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => buyValueUpgradeWithCoins(parseInt(e.target.dataset.index)));
+  });
+  document.querySelectorAll('.buy-value-uc-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => buyValueUpgradeWithUCs(parseInt(e.target.dataset.index)));
   });
 }
 
 function dropCoinAnimation(color = 'bronze') {
-  // ... (dropCoinAnimation Logik bleibt exakt gleich) ...
+  // ... (Diese Funktion bleibt unverändert) ...
   const coin = document.createElement('i');
   coin.className = `fa-solid fa-coins coin-falling coin-${color}`;
   const skyRect = coinContainer.getBoundingClientRect();
@@ -659,12 +387,10 @@ function dropCoinAnimation(color = 'bronze') {
 export function initGame() {
   loadGame();
   
-  // Klick-Handler für den Hauptbutton
   rainButton.addEventListener('click', () => {
     addCoinsWithTiers(coinsPerClick);
   });
 
-  // Auto-Regen Timer starten
   if (autoRainLevel > 0 && !autoRainTimer) {
     autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
   }

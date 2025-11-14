@@ -251,3 +251,18 @@
 .profile-message.error {
   color: red;
 }
+
+#upgrade-chip-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.1);
+  padding: 5px 10px;
+  border-radius: 10px;
+  margin-right: 20px;
+}
+
+#upgrade-chip-display i {
+  color: #ff69b4; /* Passend zur .uc-icon Klasse */
+  font-size: 20px;
+}

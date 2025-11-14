@@ -215,6 +215,9 @@ function handleSpendCrystals(button) {
         case 'coins_500k': success = game.spendCrystalsForCoins(cost, 500000); break;
         case 'perm_multi_2x': success = game.spendCrystalsForMultiplier(cost, 2); break;
         case 'auto_rain_5x': success = game.spendCrystalsForAutoRainBoost(cost, 5); break;
+        case 'uc_10': success = game.spendCrystalsForUpgradeChips(cost, 10); break;
+        case 'uc_50': success = game.spendCrystalsForUpgradeChips(cost, 50); break;
+        case 'uc_120': success = game.spendCrystalsForUpgradeChips(cost, 120); break;
     }
     if (success && (itemId === 'perm_multi_2x' || itemId === 'auto_rain_5x')) {
         button.disabled = true;

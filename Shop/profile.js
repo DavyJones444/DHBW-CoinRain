@@ -1,8 +1,8 @@
 /* Shop/profile.js */
 /* Modul für das "Mein Profil"-Modal. */
 
-import { openModal, closeModal, initModal } from '../modal.js';
-import * as auth from '../auth.js'; // Importiert das Auth-Modul
+import { openModal, closeModal, initModal } from './modal.js';
+import * as auth from './auth.js'; // Importiert das Auth-Modul
 
 let tabs = [];
 let tabContents = [];
