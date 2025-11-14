@@ -49,7 +49,6 @@ let upgradeUCCost, autoRainUCCost;
 export const coinCountEl = document.getElementById('coin-count');
 export const crystalCountEl = document.getElementById('crystal-count');
 export const chipCountEl = document.getElementById('upgrade-chip-count');
-const rainButton = document.getElementById('rain-button');
 const coinContainer = document.getElementById('coin-container');
 const cloud = document.getElementById('cloud');
 const shopList = document.querySelector('#shop ul');
@@ -128,6 +127,9 @@ export function updateUI() {
     updateCrystalDisplay();
     updateChipDisplay();
     updateShopUI(); 
+    updateCloudSprite();
+    updateShopUI();
+    updateUnlockedTiers();
 }
 export function updateCoinDisplay() {
     if(coinCountEl) coinCountEl.textContent = Math.floor(totalCoins);
@@ -318,7 +320,7 @@ function buyAutoRainWithUCs() {
 // 3. Tier-Chance
 function buyChanceUpgradeWithCoins(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(tier.baseTierCoinPrice, 1.4, tier.chanceLevel);
+  const cost = calculateUpgradeCost(tier.basePrice, 1.4, tier.chanceLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
     tier.chanceLevel++; // Erhöhe das allgemeine Level
@@ -339,7 +341,7 @@ function buyChanceUpgradeWithUCs(tierIndex) {
 // 4. Tier-Wert
 function buyValueUpgradeWithCoins(tierIndex) {
   const tier = coinTiers[tierIndex];
-  const cost = calculateUpgradeCost(tier.baseTierCoinPrice, 1.5, tier.valueLevel);
+  const cost = calculateUpgradeCost(tier.basePrice, 1.5, tier.valueLevel);
   if (totalCoins >= cost) {
     totalCoins -= cost;
     tier.valueLevel++; // Erhöhe das allgemeine Level
@@ -434,23 +436,6 @@ function updateShopUI() {
   });
 }
 
-// Event: Klick auf Button "Münze regnen lassen"
-cloud.addEventListener('click', () => {
-  // Füge Klasse zur Animation hinzu
-  cloud.classList.add("click-animation");
-
-  // Entferne Klasse nach Animation, damit man wieder klicken kann
-  cloud.addEventListener('animationend', () => {
-    cloud.classList.remove("click-animation");
-  }, { once: true });
-  addCoinsWithTiers(coinsPerClick);
-});
-
-// Automatischer Münzregen Timer starten wenn nötig
-if (autoRainLevel > 0 && !autoRainTimer) {
-  autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
-}
-
 function updateCloudSprite() {
   // Reihenfolge Tiers nach "Wertigkeit" sortiert
   const sprites = [
@@ -472,12 +457,6 @@ function updateCloudSprite() {
   // Ändere Bildquelle der Cloud
   cloud.setAttribute("src", "./sprites/"+sprites[highestUnlocked]);
 }
-
-// Beim Laden Spielstand laden, UI und Timer setzen
-loadGame();
-updateUnlockedTiers();
-updateShopUI();
-updateCloudSprite();
 
 
 // Münz-Animation mit zufälliger Position, Größe und Geschwindigkeit
@@ -509,16 +488,29 @@ export function initGame(user) {
   saveSlotUser = user; // Setze den Benutzer für save/load
   loadGame(); // Lade den Spielstand DIESES Benutzers
   
-  rainButton.addEventListener('click', () => {
+  
+  // Event: Klick auf Button "Münze regnen lassen"
+  cloud.addEventListener('click', () => {
+    // Füge Klasse zur Animation hinzu
+    cloud.classList.add("click-animation");
+
+    // Entferne Klasse nach Animation, damit man wieder klicken kann
+    cloud.addEventListener('animationend', () => {
+      cloud.classList.remove("click-animation");
+    }, { once: true });
     addCoinsWithTiers(coinsPerClick);
   });
 
+  // Automatischer Münzregen Timer starten wenn nötig
   if (autoRainLevel > 0 && !autoRainTimer) {
     autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
   }
 
-  updateUnlockedTiers();
+  if (autoRainLevel > 0 && !autoRainTimer) {
+    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
+  }
   
   // WICHTIG: updateUI() wird jetzt von app.js aufgerufen,
   // NACHDEM initGame() gelaufen ist.
 }
+
