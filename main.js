@@ -248,12 +248,12 @@ function buyValueUpgrade(tierIndex) {
 function updateShopUI() {
   let html = `
     <li>
-      Lv. ${upgradeLevel} Münzen pro Klick
-      <button id="buy-upgrade-btn">${upgradeCost} Münzen</button>
+      Münzen pro Klick | Lv. ${upgradeLevel}
+      <button id="buy-upgrade-btn">Upgrade: ${upgradeCost} Münzen</button>
     </li>
     <li>
-      Lv. ${autoRainLevel} Auto Münzregen
-      <button id="buy-auto-rain-btn">${autoRainCost} Münzen</button>
+      Auto Münzregen | Lv. ${autoRainLevel}
+      <button id="buy-auto-rain-btn">Upgrade: ${autoRainCost} Münzen</button>
     </li>
   `;
 
@@ -267,9 +267,9 @@ function updateShopUI() {
       <li>
         <strong>${tier.name} Münze</strong>
         <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
-        <button data-index="${i+1}" class="buy-chance-btn">+5% (${chanceCost} Münzen)</button><br>
-        Wert: x${getTierValue(tier).toFixed(2)}
-        <button data-index="${i+1}" class="buy-value-btn">+20% (${valueCost} Münzen)</button>
+        <button data-index="${i+1}" class="buy-chance-btn">+5% ${chanceCost} Münzen</button><br>
+        Wert: ${getTierValue(tier).toFixed(0)} Münzen
+        <button data-index="${i+1}" class="buy-value-btn">+${(tier.baseValue*0.2).toFixed(0)} ${valueCost} Münzen</button>
       </li>
     `;
     } else {
@@ -279,7 +279,7 @@ function updateShopUI() {
         <br>Chance: ${(getTierChance(tier)*100).toFixed(1)}%
         <br>
         Wert: x${getTierValue(tier).toFixed(2)}
-        <button data-index="${i+1}" class="buy-value-btn">+20% (${valueCost} Münzen)</button>
+        <button data-index="${i+1}" class="buy-value-btn">+20% ${valueCost} Münzen</button>
       </li>
     `;
     }
