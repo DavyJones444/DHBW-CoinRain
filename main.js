@@ -124,6 +124,7 @@ function reset() {
   localStorage.setItem('coinRainSave', JSON.stringify(saveData));
   loadGame();
   updateShopUI();
+  updateCloudSprite();
 }
 
 // Freischaltungen basierend auf totalCoins dauerhaft setzen
@@ -131,6 +132,7 @@ function updateUnlockedTiers() {
   coinTiers.forEach(tier => {
     if (!tier.unlocked && totalCoins >= tier.unlockAt) {
       tier.unlocked = true;
+      updateCloudSprite();
     }
   });
 }
@@ -301,7 +303,7 @@ function updateShopUI() {
 }
 
 // Event: Klick auf Button "Münze regnen lassen"
-rainButton.addEventListener('click', () => {
+cloud.addEventListener('click', () => {
   addCoinsWithTiers(coinsPerClick);
 });
 
@@ -310,10 +312,34 @@ if (autoRainLevel > 0 && !autoRainTimer) {
   autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
 }
 
+function updateCloudSprite() {
+  // Reihenfolge Tiers nach "Wertigkeit" sortiert
+  const sprites = [
+    "cloud1.png", // Bronze
+    "cloud2.png", // Silber
+    "cloud3.png", // Gold
+    "cloud4.png", // Diamant
+    "cloud5.png"  // Obsidian
+  ];
+
+  // Standard: Bronze
+  let highestUnlocked = 0;
+  for (let i = coinTiers.length - 1; i > 0; i--) {
+    if (coinTiers[i].unlocked) {
+      highestUnlocked = i;
+      break;
+    }
+  }
+  // Ändere Bildquelle der Cloud
+  cloud.setAttribute("src", "./sprites/"+sprites[highestUnlocked]);
+}
+
 // Beim Laden Spielstand laden, UI und Timer setzen
 loadGame();
 updateUnlockedTiers();
 updateShopUI();
+updateCloudSprite();
+
 
 // Münz-Animation mit zufälliger Position, Größe und Geschwindigkeit
 function dropCoinAnimation(color = 'bronze') {
