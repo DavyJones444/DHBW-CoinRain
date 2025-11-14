@@ -1,3 +1,5 @@
+
+
 // Münz Tiers mit Daten und persistentem Freischaltstatus
 const coinTiers = [
   {name: 'Bronze', color: 'bronze', baseValue: 1, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
@@ -10,6 +12,7 @@ const coinTiers = [
 // Globale Variablen
 let totalCoins = 0;
 let coinsPerClick = coinTiers[0].baseValue;
+let permanentMultiplier = 1; // NEU: Globaler Multiplikator
 
 // Upgrade "Mehr Münzen pro Klick"
 let upgradeLevel = 0;
@@ -47,6 +50,7 @@ function saveGame() {
     autoRainLevel,
     autoRainInterval,
     coinsPerClick,
+    permanentMultiplier,
     coinTiers: coinTiers.map(t => ({
       unlocked: t.unlocked,
       chanceLevel: t.chanceLevel,
@@ -67,6 +71,7 @@ function loadGame() {
   autoRainLevel = saveData.autoRainLevel ?? autoRainLevel;
   autoRainInterval = saveData.autoRainInterval ?? autoRainInterval;
   coinsPerClick = saveData.coinsPerClick ?? coinsPerClick;
+  permanentMultiplier = saveData.permanentMultiplier ?? permanentMultiplier;
 
   if (saveData.coinTiers) {
     saveData.coinTiers.forEach((t, i) => {
@@ -134,7 +139,7 @@ function addCoinsWithTiers(amount = 1) {
       }
   });
 
-  totalCoins += coinsThisClick;
+  totalCoins += (coinsThisClick * permanentMultiplier);
   updateUnlockedTiers();
 
   coinCountEl.textContent = totalCoins;
