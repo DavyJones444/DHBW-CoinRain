@@ -57,6 +57,7 @@ initGame();
 // Globale Variablen
 let totalCoins = 0;
 let coinsPerClick = 0;
+let permanentMultiplier = 1;
 
 // Upgrade "Mehr Münzen pro Klick"
 let upgradeLevel = 0;
@@ -141,7 +142,7 @@ function addCoinsWithTiers(amount = 1) {
       }
   });
 
-  totalCoins += coinsThisClick;
+  totalCoins += (coinsThisClick * permanentMultiplier);
   updateUnlockedTiers();
 
   coinCountEl.textContent = totalCoins;
