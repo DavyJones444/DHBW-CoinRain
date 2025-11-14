@@ -72,6 +72,32 @@ main {
   z-index: 10; /* Wolke über Münzen */
 }
 
+#cloud {
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+#cloud:hover {
+  transform: scale(1.1); /* Wolke wird 10% größer beim Hover */
+}
+
+#cloud.click-animation {
+  animation: clickShrink 0.1s forwards;
+}
+
+@keyframes clickShrink {
+  0% {
+    transform: scale(1.1); /* Startet von Hovergröße */
+  }
+  50% {
+    transform: scale(0.98); /* Verkürzt sich auf 90% */
+  }
+  100% {
+    transform: scale(1.1); /* Springt zurück zur Hovergröße */
+  }
+}
+
+
 /* Shop rechts */
 #shop {
   flex: 1;
