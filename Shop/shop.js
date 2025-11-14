@@ -1,5 +1,5 @@
 /* mtx-shop.js */
-
+/**
 // Sicherstellen, dass das DOM geladen ist, bevor wir Elemente suchen
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Fügt Münzen hinzu.
    * Greift auf 'totalCoins' und 'coinCountEl' aus main.js zu.
    */
-  function buyCoinPack(amount) {
+  /**function buyCoinPack(amount) {
     if (typeof totalCoins !== 'undefined' && coinCountEl) {
       totalCoins += amount;
       coinCountEl.textContent = totalCoins;
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Setzt den permanenten Multiplikator.
    * Greift auf 'permanentMultiplier' aus main.js zu.
    */
-  function buyPermanentMultiplier(value) {
+  /**function buyPermanentMultiplier(value) {
      if (typeof permanentMultiplier !== 'undefined') {
        // Multiplikatoren sollten multipliziert werden, falls man mehrere kauft
        permanentMultiplier *= value; 
@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Beschleunigt den Auto-Regen.
    * Greift auf 'autoRainInterval', 'autoRainTimer', 'autoRainMinInterval' aus main.js zu.
    */
-  function buyAutoRainBoost(factor) {
+  /**function buyAutoRainBoost(factor) {
     if (typeof autoRainInterval !== 'undefined') {
       // Berechne neues Intervall, aber nicht schneller als minInterval
       autoRainInterval = Math.max(autoRainInterval / factor, autoRainMinInterval);
@@ -137,4 +137,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-}); // Ende von DOMContentLoaded
+}); // Ende von DOMContentLoaded*/
+
+/* Shop/shop.js */
+/* Modul für die Interaktion mit dem Premium-Shop-Modal. */
+
+import { initModal, closeModal } from './modal.js';
+import { getCurrentUser, promptLogin } from './auth.js';
+import { startPayment } from './payment.js';
+import * as game from '../main.js'; // Importiert alle Exporte aus main.js
+
+/**
+ * Initialisiert das Shop-Modul.
+ * Wird von app.js aufgerufen.
+ */
+export function initShop() {
+    initModal('mtx-shop-modal', 'open-mtx-shop-btn', 'mtx-close-btn');
+    
+    const mtxContent = document.querySelector('#mtx-shop-modal .mtx-content');
+    if (mtxContent) {
+        mtxContent.addEventListener('click', (e) => {
+            const button = e.target.closest('.mtx-buy-btn');
+            if (!button) return;
+
+            const type = button.dataset.type;
+            if (type === 'buy-crystals') {
+                handleBuyCrystals(button);
+            } else if (type === 'spend-crystals') {
+                handleSpendCrystals(button);
+            }
+        });
+    }
+    
+// Deaktiviere gekaufte permanente Items beim Laden
+// (Diese Logik müsste noch implementiert werden,
+// z.B. durch Prüfung eines Flags in 'saveData')
+}
+
+/**
+ * Handhabt den Klick auf "Kristalle kaufen" (Echtgeld).
+ */
+function handleBuyCrystals(button) {
+    const packageId = button.dataset.packageId;
+    const user = getCurrentUser();
+
+    if (user) {
+        closeModal('mtx-shop-modal');
+        startPayment(packageId, user);
+    } else {
+        // Starte den Login-Prozess
+        closeModal('mtx-shop-modal');
+        
+        // auth.js kümmert sich um das Öffnen des login-modal
+        // und ruft startPayment nach Erfolg
+        promptLogin((loggedInUser) => {
+            startPayment(packageId, loggedInUser);
+        });
+    }
+}
+
+/**
+ * Handhabt den Klick auf "Für Kristalle kaufen" (Ingame-Währung).
+ */
+function handleSpendCrystals(button) {
+    // ... (Diese Funktion bleibt exakt gleich wie vorher)
+    const itemId = button.dataset.itemId;
+    const cost = parseInt(button.dataset.cost, 10);
+    
+    if (game.getTotalCrystals() < cost) {
+        alert("Nicht genügend Kristalle!");
+        return;
+    }
+    let success = false;
+    switch (itemId) {
+        case 'coins_10k': success = game.spendCrystalsForCoins(cost, 10000); break;
+        case 'coins_150k': success = game.spendCrystalsForCoins(cost, 150000); break;
+        case 'coins_500k': success = game.spendCrystalsForCoins(cost, 500000); break;
+        case 'perm_multi_2x': success = game.spendCrystalsForMultiplier(cost, 2); break;
+        case 'auto_rain_5x': success = game.spendCrystalsForAutoRainBoost(cost, 5); break;
+    }
+    if (success && (itemId === 'perm_multi_2x' || itemId === 'auto_rain_5x')) {
+        button.disabled = true;
+        button.innerHTML = "Gekauft!";
+    }
+}

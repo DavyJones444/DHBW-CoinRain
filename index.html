@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!--DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8" />
@@ -74,18 +74,18 @@
 
     <section id="game-area">
         <div id="sky">
-            <img id="cloud" src="cloud-white.png" alt="Wolke" />
+            <img id="cloud" src="cloud-white.png" alt="Wolke" />-->
             <!-- Münzen-Container für animierte Münzen -->
-            <div id="coin-container"></div>
+            <!--<div id="coin-container"></div>
         </div>
 
         <aside id="shop">
             <h2>Shop</h2>
             <ul>
                 <li>Mehr Münzen pro Klick</li>
-                <li>Automatisches Regnen</li>
+                <li>Automatisches Regnen</li>-->
                 <!-- Hier später Shop Items -->
-            </ul>
+            <!--</ul>
         </aside>
     </section>
     <button id="rain-button">Münze regnen lassen</button>
@@ -96,5 +96,58 @@
   </footer>
   <script src="main.js"></script>
   <script src="Shop/shop.js"></script>
+</body>
+</html-->
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Coin Rain</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="Shop/modals.css" />
+</head>
+<body>
+  <header>
+    <h1>Coin Rain</h1>
+    <button id="open-mtx-shop-btn" class="mtx-open-btn">
+        <i class="fa-solid fa-store"></i> Premium Shop
+    </button>
+    <div id="crystal-display">
+        <i class="fa-solid fa-gem"></i>
+        <span id="crystal-count">0</span>
+    </div>
+    <div id="coin-display">
+        <i class="fa-solid fa-coins"></i>
+        <span id="coin-count">0</span>
+    </div>
+    
+    <div id="auth-status">
+        </div>
+  </header>
+
+  <div id="shop-modal-container"></div>
+  <div id="login-modal-container"></div> <div id="register-modal-container"></div> <div id="payment-modal-container"></div>
+  <div id="profile-modal-container"></div> <main>
+    <section id="game-area">
+        <div id="sky">
+            <img id="cloud" src="cloud-white.png" alt="Wolke" />
+            <div id="coin-container"></div>
+        </div>
+        <aside id="shop">
+            <h2>Shop</h2>
+            <ul></ul>
+        </aside>
+    </section>
+    <button id="rain-button">Münze regnen lassen</button>
+  </main>
+
+  <footer>
+    <p>© 2025 Coin Rain | Impressum | Datenschutz</p>
+  </footer>
+  
+  <script src="app.js" type="module"></script>
 </body>
 </html>

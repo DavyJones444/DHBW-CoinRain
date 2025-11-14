@@ -1,4 +1,4 @@
-
+/**
 
 // Münz Tiers mit Daten und persistentem Freischaltstatus
 const coinTiers = [
@@ -343,4 +343,331 @@ function dropCoinAnimation(color = 'bronze') {
   coinContainer.appendChild(coin);
 
   coin.addEventListener('animationend', () => coin.remove());
+}*/
+
+/* main.js */
+/* Das Spiel-Modul. Es verwaltet den Spielstatus (Münzen, Kristalle, Upgrades). */
+
+// --- Konstanten und globale Variablen ---
+const coinTiers = [
+  // ... (deine coinTiers-Definition bleibt exakt gleich)
+  {name: 'Bronze', color: 'bronze', baseValue: 1, basePrice: 5, chanceBase: 0, valueMultiplier: 1, unlockAt: 0, unlocked: true, chanceLevel: 0, valueLevel: 0},
+  {name: 'Silber', color: 'silver', baseValue: 5, basePrice: 200, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Gold', color: 'gold', baseValue: 20, basePrice: 2500, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 10000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Diamant', color: 'cyan', baseValue: 100, basePrice: 30000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 100000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+  {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0},
+];
+
+let totalCoins = 0;
+let totalCrystals = 0; // Wichtig
+let coinsPerClick = 1;
+let permanentMultiplier = 1;
+let upgradeLevel = 1;
+let autoRainLevel = 0;
+let autoRainInterval = 5000;
+let autoRainTimer = null;
+let upgradeCost, autoRainCost;
+
+// --- DOM Elemente ---
+// Wir holen sie einmal und exportieren sie, damit andere Module sie nicht suchen müssen
+export const coinCountEl = document.getElementById('coin-count');
+export const crystalCountEl = document.getElementById('crystal-count');
+const rainButton = document.getElementById('rain-button');
+const coinContainer = document.getElementById('coin-container');
+const cloud = document.getElementById('cloud');
+const shopList = document.querySelector('#shop ul');
+
+// --- Kern-Funktionen (Speichern, Laden) ---
+export function saveGame() {
+  const saveData = {
+    totalCoins,
+    totalCrystals,
+    upgradeLevel,
+    autoRainLevel,
+    autoRainInterval,
+    coinsPerClick,
+    permanentMultiplier,
+    coinTiers: coinTiers.map(t => ({
+      unlocked: t.unlocked,
+      chanceLevel: t.chanceLevel,
+      valueLevel: t.valueLevel,
+    })),
+  };
+  localStorage.setItem('coinRainSave', JSON.stringify(saveData));
+}
+
+function loadGame() {
+  const saved = localStorage.getItem('coinRainSave');
+  if (!saved) return;
+  const saveData = JSON.parse(saved);
+
+  totalCoins = saveData.totalCoins ?? 0;
+  totalCrystals = saveData.totalCrystals ?? 0;
+  upgradeLevel = saveData.upgradeLevel ?? 1;
+  autoRainLevel = saveData.autoRainLevel ?? 0;
+  autoRainInterval = saveData.autoRainInterval ?? 5000;
+  coinsPerClick = saveData.coinsPerClick ?? 1;
+  permanentMultiplier = saveData.permanentMultiplier ?? 1;
+
+  if (saveData.coinTiers) {
+    saveData.coinTiers.forEach((t, i) => {
+      if (coinTiers[i]) {
+        coinTiers[i].unlocked = t.unlocked;
+        coinTiers[i].chanceLevel = t.chanceLevel;
+        coinTiers[i].valueLevel = t.valueLevel;
+      }
+    });
+  }
+}
+
+// --- Exportierte UI-Updater ---
+export function updateUI() {
+    updateCoinDisplay();
+    updateCrystalDisplay();
+    updateShopUI(); // Aktualisiert den In-Game-Shop
+}
+export function updateCoinDisplay() {
+    if(coinCountEl) coinCountEl.textContent = Math.floor(totalCoins);
+}
+export function updateCrystalDisplay() {
+    if(crystalCountEl) crystalCountEl.textContent = totalCrystals;
+}
+
+// --- Exportierte API für den Shop ---
+export function addCrystals(amount) {
+  totalCrystals += amount;
+  updateCrystalDisplay();
+  saveGame();
+}
+
+export function getTotalCrystals() {
+  return totalCrystals;
+}
+
+export function spendCrystalsForCoins(crystalCost, coinAmount) {
+  if (totalCrystals < crystalCost) {
+    alert("Nicht genügend Kristalle!");
+    return false;
+  }
+  totalCrystals -= crystalCost;
+  totalCoins += coinAmount;
+  updateCrystalDisplay();
+  updateCoinDisplay();
+  alert(`Du hast ${coinAmount} Münzen für ${crystalCost} Kristalle gekauft!`);
+  saveGame();
+  return true;
+}
+
+export function spendCrystalsForMultiplier(crystalCost, multiplier) {
+  if (totalCrystals < crystalCost) {
+    alert("Nicht genügend Kristalle!");
+    return false;
+  }
+  totalCrystals -= crystalCost;
+  permanentMultiplier *= multiplier;
+  updateCrystalDisplay();
+  alert(`Permanenter ${multiplier}x Multiplikator gekauft!`);
+  saveGame();
+  return true;
+}
+
+export function spendCrystalsForAutoRainBoost(crystalCost, factor) {
+  if (totalCrystals < crystalCost) {
+    alert("Nicht genügend Kristalle!");
+    return false;
+  }
+  totalCrystals -= crystalCost;
+  autoRainInterval = Math.max(autoRainInterval / factor, 500); // 500 = autoRainMinInterval
+  if (autoRainTimer) {
+    clearInterval(autoRainTimer);
+    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
+  }
+  updateCrystalDisplay();
+  alert(`Auto-Regen Boost (${factor}x) gekauft!`);
+  saveGame();
+  return true;
+}
+
+// --- Restliche Spiellogik (bleibt fast unverändert) ---
+function calculateUpgradeCost(base, factor, level) {
+  return Math.floor(base * Math.pow(factor, level));
+}
+function getUnlockedTiers() {
+  return coinTiers.filter(tier => tier.unlocked);
+}
+function updateUnlockedTiers() {
+  coinTiers.forEach(tier => {
+    if (!tier.unlocked && totalCoins >= tier.unlockAt) {
+      tier.unlocked = true;
+    }
+  });
+}
+function chanceCheck(probability) { return Math.random() < probability; }
+function getTierChance(tier) { return tier.chanceBase + tier.chanceLevel * 0.05; }
+function getTierValue(tier) { return tier.baseValue * (1 + tier.valueLevel * 0.2); }
+
+function addCoinsWithTiers(amount = 1) {
+  let coinsThisClick = 0;
+  let animations = [];
+
+  coinsThisClick += getTierValue(coinTiers[0]) * amount;
+  animations.push({color: 'bronze', count: amount});
+
+  const unlocked = getUnlockedTiers();
+  unlocked.slice(1).forEach(tier => {
+      if (chanceCheck(getTierChance(tier))) {
+        coinsThisClick += getTierValue(tier);
+        animations.push({color: tier.color, count: 1});
+      }
+  });
+
+  totalCoins += (coinsThisClick * permanentMultiplier);
+  updateUnlockedTiers();
+  
+  // UI wird nur noch hier aktualisiert
+  updateCoinDisplay();
+  updateShopUI(); 
+  saveGame();
+
+  animations.forEach(anim => {
+    for (let i = 0; i < anim.count; i++) {
+      dropCoinAnimation(anim.color);
+    }
+  });
+}
+
+// ... (buyUpgrade, buyAutoRain, buyChanceUpgrade, buyValueUpgrade bleiben exakt gleich) ...
+// ... (Wir müssen sie hier nur aufrufen) ...
+function buyUpgrade() {
+  upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, 1.95, upgradeLevel);
+  if (totalCoins >= upgradeCost) {
+    totalCoins -= upgradeCost;
+    upgradeLevel++;
+    coinsPerClick = (upgradeLevel + 1) * coinTiers[0].baseValue;
+    updateCoinDisplay();
+    updateShopUI();
+    saveGame();
+  } else {
+    alert("Nicht genug Münzen für das Upgrade!");
+  }
+}
+
+function buyAutoRain() {
+  autoRainCost = calculateUpgradeCost(100, 1.15, autoRainLevel);
+  if (totalCoins >= autoRainCost) {
+    totalCoins -= autoRainCost;
+    autoRainLevel++;
+    autoRainInterval = Math.max(autoRainInterval * 0.85, 500);
+    if (autoRainTimer) clearInterval(autoRainTimer);
+    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
+    updateCoinDisplay();
+    updateShopUI();
+    saveGame();
+  } else {
+    alert("Nicht genug Münzen für automatischen Münzregen!");
+  }
+}
+function buyChanceUpgrade(tierIndex) {
+  const tier = coinTiers[tierIndex];
+  const cost = calculateUpgradeCost(tier.basePrice, 1.3, tier.chanceLevel);
+  if (totalCoins >= cost) {
+    totalCoins -= cost;
+    tier.chanceLevel++;
+    updateCoinDisplay();
+    updateShopUI();
+    saveGame();
+  } else {
+    alert(`Nicht genug Münzen für Chance-Upgrade (${tier.name})!`);
+  }
+}
+function buyValueUpgrade(tierIndex) {
+  const tier = coinTiers[tierIndex];
+  const cost = calculateUpgradeCost(tier.basePrice, 1.3, tier.valueLevel);
+  if (totalCoins >= cost) {
+    totalCoins -= cost;
+    tier.valueLevel++;
+    updateCoinDisplay();
+    updateShopUI();
+    saveGame();
+  } else {
+    alert(`Nicht genug Münzen für Wert-Upgrade (${tier.name})!`);
+  }
+}
+
+function updateShopUI() {
+  if (!shopList) return; // Sicherstellen, dass das Element existiert
+  upgradeCost = calculateUpgradeCost(coinTiers[0].basePrice, 1.95, upgradeLevel);
+  autoRainCost = calculateUpgradeCost(100, 1.15, autoRainLevel);
+
+  let html = `
+    <li>
+      Münzen pro Klick | Lv. ${upgradeLevel}
+      <button id="buy-upgrade-btn">Upgrade: ${upgradeCost} Münzen</button>
+    </li>
+    <li>
+      Auto Münzregen | Lv. ${autoRainLevel}
+      <button id="buy-auto-rain-btn">Upgrade: ${autoRainCost} Münzen</button>
+    </li>
+  `;
+  getUnlockedTiers().slice(1).forEach((tier, i) => {
+    const chanceCost = calculateUpgradeCost(tier.basePrice, 1.3, tier.chanceLevel);
+    const valueCost = calculateUpgradeCost(tier.basePrice, 1.3, tier.valueLevel);
+    const tierChance = (getTierChance(tier)*100).toFixed(1);
+    
+    html += `<li><strong>${tier.name} Münze</strong><br>`;
+    if (tierChance < 100) {
+      html += `Chance: ${tierChance}% <button data-index="${i+1}" class="buy-chance-btn">+5% ${chanceCost} Münzen</button><br>`;
+    } else {
+      html += `Chance: ${tierChance}%<br>`;
+    }
+    html += `Wert: ${getTierValue(tier).toFixed(0)} Münzen <button data-index="${i+1}" class="buy-value-btn">+${(tier.baseValue*0.2).toFixed(0)} ${valueCost} Münzen</button></li>`;
+  });
+  shopList.innerHTML = html;
+  
+  // Eventlistener (neu binden)
+  document.getElementById('buy-upgrade-btn').addEventListener('click', buyUpgrade);
+  document.getElementById('buy-auto-rain-btn').addEventListener('click', buyAutoRain);
+  document.querySelectorAll('.buy-chance-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => buyChanceUpgrade(parseInt(e.target.dataset.index)));
+  });
+  document.querySelectorAll('.buy-value-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => buyValueUpgrade(parseInt(e.target.dataset.index)));
+  });
+}
+
+function dropCoinAnimation(color = 'bronze') {
+  // ... (dropCoinAnimation Logik bleibt exakt gleich) ...
+  const coin = document.createElement('i');
+  coin.className = `fa-solid fa-coins coin-falling coin-${color}`;
+  const skyRect = coinContainer.getBoundingClientRect();
+  const cloudRect = cloud.getBoundingClientRect();
+  if(!cloudRect) return;
+  const cloudWidth = cloudRect.width;
+  const randomX = Math.random() * (cloudWidth - 20);
+  const startX = cloudRect.left + 15 - skyRect.left + randomX;
+  coin.style.left = `${startX}px`;
+  const duration = (Math.random() * (2.5 - 1.5) + 1.5).toFixed(2);
+  coin.style.animationDuration = `${duration}s`;
+  const size = Math.floor(Math.random() * (22 - 10) + 10);
+  coin.style.fontSize = `${size}px`;
+  coinContainer.appendChild(coin);
+  coin.addEventListener('animationend', () => coin.remove());
+}
+
+
+// --- Initialisierung ---
+export function initGame() {
+  loadGame();
+  
+  // Klick-Handler für den Hauptbutton
+  rainButton.addEventListener('click', () => {
+    addCoinsWithTiers(coinsPerClick);
+  });
+
+  // Auto-Regen Timer starten
+  if (autoRainLevel > 0 && !autoRainTimer) {
+    autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
+  }
+
+  updateUnlockedTiers();
 }

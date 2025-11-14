@@ -1,0 +1,50 @@
+<div id="profile-modal" class="mtx-modal">
+    <div class="mtx-content profile-modal-content">
+      <span id="profile-close-btn" class="mtx-close-btn">&times;</span>
+      <h2>Mein Profil</h2>
+
+      <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="tab-username">Profil</button>
+        <button class="profile-tab" data-tab="tab-password">Passwort</button>
+        <button class="profile-tab" data-tab="tab-payment">Zahlung</button>
+      </div>
+
+      <div id="tab-username" class="profile-tab-content active">
+        <form id="profile-username-form">
+          <label for="profile-username">Benutzername:</label>
+          <input type="text" id="profile-username" required>
+          <label for="profile-email">E-Mail:</label>
+          <input type="email" id="profile-email" required>
+          <button type="submit">Änderungen speichern</button>
+          <p id="profile-username-message" class="profile-message"></p>
+        </form>
+      </div>
+      
+      <div id="tab-password" class="profile-tab-content">
+        <form id="profile-password-form">
+          <label for="profile-old-password">Aktuelles Passwort:</label>
+          <input type="password" id="profile-old-password" required>
+          <label for="profile-new-password">Neues Passwort:</label>
+          <input type="password" id="profile-new-password" required>
+          <label for="profile-new-password-confirm">Neues Passwort bestätigen:</label>
+          <input type="password" id="profile-new-password-confirm" required>
+          <button type="submit">Passwort ändern</button>
+          <p id="profile-password-message" class="profile-message"></p>
+        </form>
+      </div>
+
+      <div id="tab-payment" class="profile-tab-content">
+        <form id="profile-payment-form">
+          <label for="profile-iban">Gespeicherte IBAN (GiroPay):</label>
+          <input type="text" id="profile-iban" placeholder="DE00 1234 5678 9...">
+          <div class="checkbox-wrapper">
+            <input type="checkbox" id="profile-save-payment" checked>
+            <label for="profile-save-payment">Zahlungsinformationen speichern</label>
+          </div>
+          <button type="submit">Zahlungsinformationen speichern</button>
+          <p id="profile-payment-message" class="profile-message"></p>
+        </form>
+      </div>
+
+    </div>
+</div>
