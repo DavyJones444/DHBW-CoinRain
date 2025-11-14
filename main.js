@@ -10,6 +10,13 @@ const coinTiers = [
   {name: 'Obsidian', color: 'darkviolet', baseValue: 500, basePrice: 35000, baseTierUCPrice: 1, chanceBase: 0.05, valueMultiplier: 1, unlockAt: 1000000, unlocked: false, chanceLevel: 0, valueLevel: 0, chanceUCLevel: 0, valueUCLevel: 0},
 ];
 
+// Flags für permanente Upgrades
+let multiplierFlag = false;
+let autoRainBoostFlag = false;
+
+// Speicher-Slot für den angemeldeten Benutzer
+let saveSlotUser = null;
+
 // Basis-Upgrades (Klick & Auto)
 let upgradeLevel = 1;
 let autoRainLevel = 0;
@@ -48,26 +55,45 @@ const cloud = document.getElementById('cloud');
 const shopList = document.querySelector('#shop ul');
 
 // --- Kern-Funktionen (Speichern, Laden) ---
+/**
+ * Speichert den Fortschritt für den aktuellen Benutzer.
+ */
 export function saveGame() {
+  // Speichere nicht, wenn kein Benutzer angemeldet ist
+  if (!saveSlotUser) return;
+
   const saveData = {
     totalCoins, totalCrystals, totalUpgradeChips,
     upgradeLevel, autoRainLevel, autoRainInterval,
-    upgradeUCLevel, autoRainUCLevel, // NEU
+    upgradeUCLevel, autoRainUCLevel,
     coinsPerClick, permanentMultiplier,
+    multiplierFlag, autoRainBoostFlag,
     coinTiers: coinTiers.map(t => ({
       unlocked: t.unlocked,
       chanceLevel: t.chanceLevel,
       valueLevel: t.valueLevel,
-      chanceUCLevel: t.chanceUCLevel, // NEU
-      valueUCLevel: t.valueUCLevel, // NEU
+      chanceUCLevel: t.chanceUCLevel,
+      valueUCLevel: t.valueUCLevel,
     })),
   };
-  localStorage.setItem('coinRainSave', JSON.stringify(saveData));
+  
+  // Benutzt den Benutzernamen als Teil des Schlüssels
+  localStorage.setItem('coinRainSave_' + saveSlotUser.username, JSON.stringify(saveData));
 }
 
+/**
+ * Lädt den Fortschritt für den aktuellen Benutzer.
+ */
 function loadGame() {
-  const saved = localStorage.getItem('coinRainSave');
-  if (!saved) return;
+  if (!saveSlotUser) return;
+
+  // Lädt den benutzerspezifischen Spielstand
+  const saved = localStorage.getItem('coinRainSave_' + saveSlotUser.username);
+  
+  // Wenn kein Spielstand für DIESEN Benutzer existiert,
+  // werden einfach die globalen Standardwerte (z.B. totalCoins = 0) verwendet.
+  if (!saved) return; 
+
   const saveData = JSON.parse(saved);
 
   totalCoins = saveData.totalCoins ?? 0;
@@ -75,11 +101,13 @@ function loadGame() {
   totalUpgradeChips = saveData.totalUpgradeChips ?? 0;
   upgradeLevel = saveData.upgradeLevel ?? 1;
   autoRainLevel = saveData.autoRainLevel ?? 0;
-  upgradeUCLevel = saveData.upgradeUCLevel ?? 0; // NEU
-  autoRainUCLevel = saveData.autoRainUCLevel ?? 0; // NEU
+  upgradeUCLevel = saveData.upgradeUCLevel ?? 0;
+  autoRainUCLevel = saveData.autoRainUCLevel ?? 0;
   autoRainInterval = saveData.autoRainInterval ?? 5000;
   coinsPerClick = saveData.coinsPerClick ?? 1;
   permanentMultiplier = saveData.permanentMultiplier ?? 1;
+  multiplierFlag = saveData.multiplierFlag ?? false;
+  autoRainBoostFlag = saveData.autoRainBoostFlag ?? false;
 
   if (saveData.coinTiers) {
     saveData.coinTiers.forEach((t, i) => {
@@ -87,8 +115,8 @@ function loadGame() {
         coinTiers[i].unlocked = t.unlocked;
         coinTiers[i].chanceLevel = t.chanceLevel;
         coinTiers[i].valueLevel = t.valueLevel;
-        coinTiers[i].chanceUCLevel = t.chanceUCLevel ?? 0; // NEU
-        coinTiers[i].valueUCLevel = t.valueUCLevel ?? 0; // NEU
+        coinTiers[i].chanceUCLevel = t.chanceUCLevel ?? 0;
+        coinTiers[i].valueUCLevel = t.valueUCLevel ?? 0;
       }
     });
   }
@@ -109,6 +137,13 @@ export function updateCrystalDisplay() {
 }
 export function updateChipDisplay() {
     if(chipCountEl) chipCountEl.textContent = totalUpgradeChips;
+}
+
+export function isMultiplierPurchased() {
+    return multiplierFlag; 
+}
+export function isAutoRainBoostPurchased() {
+    return autoRainBoostFlag; 
 }
 
 // --- Exportierte API für den Shop (bleibt gleich) ---
@@ -136,7 +171,9 @@ export function spendCrystalsForCoins(crystalCost, coinAmount) {
 }
 export function spendCrystalsForMultiplier(crystalCost, multiplier) {
   if (totalCrystals < crystalCost) { alert("Nicht genügend Kristalle!"); return false; }
-  totalCrystals -= crystalCost; permanentMultiplier *= multiplier;
+  totalCrystals -= crystalCost; 
+  permanentMultiplier *= multiplier;
+  multiplierFlag = true;
   updateCrystalDisplay();
   alert(`Permanenter ${multiplier}x Multiplikator gekauft!`);
   saveGame(); return true;
@@ -145,6 +182,7 @@ export function spendCrystalsForAutoRainBoost(crystalCost, factor) {
   if (totalCrystals < crystalCost) { alert("Nicht genügend Kristalle!"); return false; }
   totalCrystals -= crystalCost;
   autoRainInterval = Math.max(autoRainInterval / factor, 500);
+  autoRainBoostFlag = true;
   if (autoRainTimer) {
     clearInterval(autoRainTimer);
     autoRainTimer = setInterval(() => addCoinsWithTiers(1), autoRainInterval);
@@ -382,10 +420,14 @@ function dropCoinAnimation(color = 'bronze') {
   coin.addEventListener('animationend', () => coin.remove());
 }
 
-
 // --- Initialisierung ---
-export function initGame() {
-  loadGame();
+
+/**
+ * Nimmt den Benutzer entgegen, um den korrekten Spielstand zu laden.
+ */
+export function initGame(user) {
+  saveSlotUser = user; // Setze den Benutzer für save/load
+  loadGame(); // Lade den Spielstand DIESES Benutzers
   
   rainButton.addEventListener('click', () => {
     addCoinsWithTiers(coinsPerClick);
@@ -396,4 +438,7 @@ export function initGame() {
   }
 
   updateUnlockedTiers();
+  
+  // WICHTIG: updateUI() wird jetzt von app.js aufgerufen,
+  // NACHDEM initGame() gelaufen ist.
 }

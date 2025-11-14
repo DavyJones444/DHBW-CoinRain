@@ -3,14 +3,14 @@
 
 // Importiere die Initialisierungs-Funktionen von jedem Modul
 import { initGame, updateUI } from './main.js';
-import { initAuth } from './shop/auth.js';
+// KORRIGIERT: Wir brauchen getCurrentUser und promptLogin direkt in app.js
+import { initAuth, getCurrentUser, promptLogin } from './shop/auth.js';
 import { initPayment } from './shop/payment.js';
 import { initShop } from './shop/shop.js';
 import { initProfile } from './shop/profile.js';
 
 /**
  * Lädt HTML-Fragmente (Partials) in die Container-Divs.
- * Das ist "Clean Code", da das Haupt-HTML sauber bleibt.
  */
 async function loadHtmlPartials() {
     try {
@@ -37,20 +37,47 @@ async function loadHtmlPartials() {
 }
 
 /**
- * Startet die gesamte Anwendung, sobald das DOM und die HTML-Fragmente geladen sind.
+ * NEU: Diese Funktion startet das eigentliche Spiel,
+ * nachdem der Login erfolgreich war.
+ */
+function startApplication(user) {
+    console.log("Anwendung wird gestartet für:", user.username);
+    
+    // Initialisiere das Spiel-Modul MIT dem Benutzerobjekt
+    initGame(user);
+    
+    // Aktualisiere die UI (lädt Spielstand-Werte in die Anzeige)
+    updateUI();
+}
+
+/**
+ * Startet die gesamte Anwendung.
+ * KORRIGIERT: Erzwingt jetzt die Login-Wall.
  */
 async function main() {
+    // 1. Lade immer das HTML
     await loadHtmlPartials();
     
-    // Initialisiere alle Module in der korrekten Reihenfolge
-    initGame();     // Lädt Spielstand und stellt Spiel-Funktionen bereit
-    updateUI();     // Aktualisiert Münzen/Kristalle beim Start
-    
-    // Initialisiere die Modal-Module
+    // 2. Initialisiere alle Module, die für Modals/Auth gebraucht werden
+    // (Sie hängen noch keine sichtbaren Listener an, außer auth)
     initAuth();
     initPayment();
     initProfile();
-    initShop();     // Shop als letztes, da er von Auth und Payment abhängt
+    initShop();
+    
+    // 3. Prüfe, ob ein Benutzer aus dem localStorage geladen wurde
+    const user = getCurrentUser();
+    
+    if (user) {
+        // 4a. Benutzer ist angemeldet: Starte das Spiel direkt
+        startApplication(user);
+    } else {
+        // 4b. Benutzer ist nicht angemeldet: Zeige die Login-Wall
+        // Wir übergeben 'startApplication' als Callback,
+        // das nach erfolgreichem Login/Register ausgeführt wird.
+        // 'true' erzwingt das Modal (kein Schließen).
+        promptLogin(startApplication, true);
+    }
 }
 
 // Warte, bis das DOM geladen ist, und starte dann die App

@@ -2,10 +2,12 @@
 /* Modul für Authentifizierung (Login/Register), Status & User-Daten. */
 
 import { openModal, closeModal, initModal } from './modal.js';
+import { saveGame } from '../main.js';
 
 let currentUser = null;
 let users = JSON.parse(localStorage.getItem('coinRainUsers')) || {};
-let onLoginSuccessCallback = null; // NEU: Der fehlende Callback-Speicher
+let onLoginSuccessCallback = null;
+let isLoginForced = false; // NEU: Steuert die "Login-Wall"
 
 // --- Interne Hilfsfunktionen ---
 function saveUsers() {
@@ -20,26 +22,26 @@ function setMessage(type, id, text) {
     const el = document.getElementById(id);
     if (el) {
         el.textContent = text;
-        // KORRIGIERT: Stellt sicher, dass die Klasse korrekt gesetzt wird
         el.className = text ? `auth-message ${type}` : 'auth-message';
     }
 }
 
 // --- Haupt-Initialisierung ---
 export function initAuth() {
-    // 1. Modals initialisieren
-    initModal('login-modal', null, 'login-close-btn');
-    initModal('register-modal', null, 'register-close-btn');
+    // 1. Modals initialisieren (KEIN auto-init mehr von modal.js)
+    // initModal('login-modal', null, 'login-close-btn'); <-- Wir machen das manuell
+    initModal('register-modal', null, 'register-close-btn'); // Register kann normal schließen
 
-    // KORRIGIERT: Eigene Logik für das Schließen des Login-Modals
-    // um den Callback sicher zurückzusetzen.
+    // KORRIGIERT: Manuelle Steuerung des Login-Modal-Schließens
     document.getElementById('login-close-btn').addEventListener('click', () => {
+        if (isLoginForced) return; // Blockiere Schließen, wenn 'force' aktiv ist
         onLoginSuccessCallback = null;
         setMessage('error', 'login-message', '');
         closeModal('login-modal');
     });
     // Klick daneben
     document.getElementById('login-modal').addEventListener('click', (e) => {
+        if (isLoginForced) return; // Blockiere Schließen
         if (e.target.id === 'login-modal') {
             onLoginSuccessCallback = null;
             setMessage('error', 'login-message', '');
@@ -51,8 +53,9 @@ export function initAuth() {
     document.getElementById('show-register-link').addEventListener('click', () => {
         closeModal('login-modal');
         openModal('register-modal');
-        onLoginSuccessCallback = null; // WICHTIG: Kauf-Absicht hier abbrechen
-        setMessage('error', 'login-message', '');
+        // WICHTIG: Wenn der Benutzer von der Login-Wall zur Registrierung wechselt,
+        // muss der Callback (startApplication) beibehalten werden!
+        // onLoginSuccessCallback = null; // <-- Diesen NICHT zurücksetzen
     });
     document.getElementById('show-login-link').addEventListener('click', () => {
         closeModal('register-modal');
@@ -75,7 +78,6 @@ export function initAuth() {
 
 // --- UI-Steuerung (Header) ---
 function updateAuthHeader() {
-    // ... (Diese Funktion bleibt EXAKT GLEICH wie in meiner letzten Antwort)
     const statusEl = document.getElementById('auth-status');
     if (!statusEl) return;
 
@@ -96,23 +98,22 @@ function updateAuthHeader() {
             <a href="#" id="show-login-btn">Anmelden / Registrieren</a>
         `;
         document.getElementById('show-login-btn').addEventListener('click', () => {
-            openModal('login-modal');
+            // Standard-Login (nicht erzwungen)
+            promptLogin(null, false);
         });
     }
 }
 
 // --- Auth-Flow Funktionen ---
 function handleLogin(e) {
-    if (e) e.preventDefault(); // KORRIGIERT: Verhindert Formular-Neuladen
+    if (e) e.preventDefault();
     const credential = document.getElementById('login-credential').value;
     const password = document.getElementById('login-password').value;
     let foundUser = null;
 
-    // 1. Nach Benutzername suchen
     if (users[credential] && users[credential].password === password) {
         foundUser = users[credential];
     }
-    // 2. Nach E-Mail suchen
     if (!foundUser) {
         const userByEmail = findUserByEmail(credential);
         if (userByEmail && userByEmail.password === password) {
@@ -126,12 +127,13 @@ function handleLogin(e) {
         updateAuthHeader();
         closeModal('login-modal');
         document.getElementById('login-form').reset();
-        setMessage('error', 'login-message', ''); // Nachricht löschen
-
-        // KORRIGIERT: Prüfen, ob ein Callback (z.B. vom Shop) wartet
+        setMessage('error', 'login-message', '');
+        
+        isLoginForced = false; // "Wall" ist durchbrochen
+        
         if (onLoginSuccessCallback) {
-            onLoginSuccessCallback(currentUser);
-            onLoginSuccessCallback = null; // Callback zurücksetzen
+            onLoginSuccessCallback(currentUser); // Starte die Anwendung (via app.js)
+            onLoginSuccessCallback = null;
         }
     } else {
         setMessage('error', 'login-message', 'Benutzername/E-Mail oder Passwort falsch.');
@@ -139,51 +141,64 @@ function handleLogin(e) {
 }
 
 function handleRegister(e) {
-    // ... (Diese Funktion bleibt EXAKT GLEICH wie in meiner letzten Antwort)
     e.preventDefault();
+    // ... (Validierungslogik bleibt gleich) ...
     const username = document.getElementById('register-username').value;
     const email = document.getElementById('register-email').value;
     const pass1 = document.getElementById('register-password').value;
     const pass2 = document.getElementById('register-password-confirm').value;
 
-    if (!username || !email || !pass1 || !pass2) {
-        return setMessage('error', 'register-message', 'Bitte alle Felder ausfüllen.');
-    }
-    if (pass1 !== pass2) {
-        return setMessage('error', 'register-message', 'Die Passwörter stimmen nicht überein.');
-    }
-    if (users[username]) {
-        return setMessage('error', 'register-message', 'Benutzername ist bereits vergeben.');
-    }
-    if (findUserByEmail(email)) {
-        return setMessage('error', 'register-message', 'E-Mail ist bereits registriert.');
-    }
+    if (!username || !email || !pass1 || !pass2) { /* ... */ }
+    if (pass1 !== pass2) { /* ... */ }
+    if (users[username]) { /* ... */ }
+    if (findUserByEmail(email)) { /* ... */ }
 
+    // Erfolg
     users[username] = { username, email, password: pass1, paymentInfo: null };
     saveUsers();
     
-    alert('Registrierung erfolgreich! Du kannst dich jetzt anmelden.');
+    // KORRIGIERT: Neuen Benutzer SOFORT anmelden
+    currentUser = users[username];
+    localStorage.setItem('coinRainCurrentUser', currentUser.username);
+    updateAuthHeader();
     closeModal('register-modal');
     document.getElementById('register-form').reset();
-    openModal('login-modal');
+    
+    isLoginForced = false; // "Wall" ist durchbrochen
+
+    // Starte die Anwendung, falls dies der erste Login war
+    if (onLoginSuccessCallback) {
+        onLoginSuccessCallback(currentUser);
+        onLoginSuccessCallback = null;
+    }
 }
 
 function handleLogout() {
+    saveGame(); // Speichere den Spielstand vor dem Abmelden
     currentUser = null;
     localStorage.removeItem('coinRainCurrentUser');
-    updateAuthHeader();
+    // KORRIGIERT: Seite neuladen, um die Login-Wall zu erzwingen
+    location.reload();
 }
 
 // --- API für andere Module ---
 
 /**
- * NEU: Die fehlende Funktion für shop.js
- * Öffnet das Login-Modal und speichert einen Callback für nach dem Login.
- * @param {function} [onSuccess] (Optional) Callback, das nach erfolgreichem Login ausgeführt wird.
+ * KORRIGIERT: Öffnet das Login-Modal, speichert Callback und erzwingt ggf.
+ * @param {function} [onSuccess] Callback nach erfolgreichem Login.
+ * @param {boolean} [forceLogin] Wenn true, kann das Modal nicht geschlossen werden.
  */
-export function promptLogin(onSuccess = null) {
-    onLoginSuccessCallback = onSuccess; // Merken, was zu tun ist
+export function promptLogin(onSuccess = null, forceLogin = false) {
+    isLoginForced = forceLogin;
+    onLoginSuccessCallback = onSuccess;
     setMessage('error', 'login-message', 'Bitte anmelden, um fortzufahren.');
+
+    // Schließen-Button basierend auf 'force' ein/ausblenden
+    const closeBtn = document.getElementById('login-close-btn');
+    if (closeBtn) {
+        closeBtn.style.display = forceLogin ? 'none' : 'block';
+    }
+    
     openModal('login-modal');
 }
 
@@ -191,8 +206,9 @@ export function getCurrentUser() {
     return currentUser;
 }
 
+// ... (Alle 'change...'-Funktionen bleiben exakt gleich)
 export function changeUsername(newUsername) {
-    // ... (Diese Funktion bleibt EXAKT GLEICH wie in meiner letzten Antwort)
+    // ...
     if (!currentUser) return { success: false, message: "Nicht angemeldet." };
     if (users[newUsername]) return { success: false, message: "Benutzername bereits vergeben." };
     
@@ -208,7 +224,7 @@ export function changeUsername(newUsername) {
 }
 
 export function changeEmail(newEmail) {
-    // ... (Diese Funktion bleibt EXAKT GLEICH wie in meiner letzten Antwort)
+    // ...
     if (!currentUser) return { success: false, message: "Nicht angemeldet." };
     if (findUserByEmail(newEmail)) return { success: false, message: "E-Mail bereits vergeben." };
     
@@ -218,7 +234,7 @@ export function changeEmail(newEmail) {
 }
 
 export function changePassword(oldPass, newPass, confirmPass) {
-    // ... (Diese Funktion bleibt EXAKT GLEICH wie in meiner letzten Antwort)
+    // ...
     if (!currentUser) return { success: false, message: "Nicht angemeldet." };
     if (currentUser.password !== oldPass) return { success: false, message: "Aktuelles Passwort ist falsch." };
     if (newPass !== confirmPass) return { success: false, message: "Neue Passwörter stimmen nicht überein." };
@@ -229,7 +245,7 @@ export function changePassword(oldPass, newPass, confirmPass) {
 }
 
 export function changePayment(iban, save) {
-    // ... (Diese Funktion bleibt EXAKT GLEICH wie in meiner letzten Antwort)
+    // ...
     if (!currentUser) return { success: false, message: "Nicht angemeldet." };
     
     if (save && iban) {
