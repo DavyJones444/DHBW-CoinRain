@@ -249,27 +249,34 @@ function getTierValue(tier) { return tier.baseValue * (1 + tier.valueLevel * 0.2
 
 
 function addCoinsWithTiers(amount = 1) {
-  // ... (Diese Funktion bleibt unverändert) ...
+  // ...  ...
   let coinsThisClick = 0;
   let animations = [];
-  coinsThisClick += getTierValue(coinTiers[0]) * amount;
-  animations.push({color: 'bronze', count: amount});
   const unlocked = getUnlockedTiers();
-  unlocked.slice(1).forEach(tier => {
+  // Für jede spawnbare Münze geht man durch die Tiers und schaut, ob sie geupgraded wird.
+  for (let i=0; i<amount ;i++) {
+    animations.push({color: 'bronze', coins: getTierValue(coinTiers[0])});
+    unlocked.slice(1).forEach(tier => {
       if (chanceCheck(getTierChance(tier))) {
-        coinsThisClick += getTierValue(tier);
-        animations.push({color: tier.color, count: 1});
+        animations.pop();
+        animations.push({color: tier.color, coins: getTierValue(tier)});
       }
+    });
+  }
+  // Der Wert jeder Münze, die gespawnt wird, wird hinzugefügt.
+  animations.forEach(anim => {
+    for (let i = 0; i < animations.length; i++) {
+      coinsThisClick += anim.coins;
+    }
   });
+  
   totalCoins += (coinsThisClick * permanentMultiplier);
   updateUnlockedTiers();
   updateCoinDisplay();
   updateShopUI();
   saveGame();
   animations.forEach(anim => {
-    for (let i = 0; i < anim.count; i++) {
-      dropCoinAnimation(anim.color);
-    }
+    dropCoinAnimation(anim.color);
   });
 }
 
