@@ -173,7 +173,7 @@ footer {
 
 @keyframes fallFade {
   0% {
-    top: 10%; /* unter der Wolke */
+    top: 13%; /* unter der Wolke */
     opacity: 1;
   }
   80% {
