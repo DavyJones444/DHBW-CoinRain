@@ -468,7 +468,7 @@ function dropCoinAnimation(color = 'bronze') {
   const cloudRect = cloud.getBoundingClientRect();
   if(!cloudRect) return;
   const cloudWidth = cloudRect.width;
-  const randomX = Math.random() * (cloudWidth - 20);
+  const randomX = Math.random() * (cloudWidth - 30);
   const startX = cloudRect.left + 15 - skyRect.left + randomX;
   coin.style.left = `${startX}px`;
   const duration = (Math.random() * (2.5 - 1.5) + 1.5).toFixed(2);

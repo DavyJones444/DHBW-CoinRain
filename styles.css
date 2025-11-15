@@ -83,7 +83,7 @@ main {
 }
 
 #cloud.click-animation {
-  animation: clickShrink 0.1s forwards;
+  animation: clickShrink 0.08s forwards;
 }
 
 @keyframes clickShrink {
@@ -91,7 +91,7 @@ main {
     transform: scale(1.1); /* Startet von Hovergröße */
   }
   50% {
-    transform: scale(0.98); /* Verkürzt sich auf 90% */
+    transform: scale(1.05); /* Verkürzt sich auf 90% */
   }
   100% {
     transform: scale(1.1); /* Springt zurück zur Hovergröße */
